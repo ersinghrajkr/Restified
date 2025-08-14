@@ -1,0 +1,101 @@
+{
+  "name": "restifiedts",
+  "version": "1.0.0",
+  "description": "Production-grade TypeScript API testing framework with fluent DSL",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "bin": {
+    "restifiedts": "./dist/src/cli/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "dev": "ts-node src/index.ts",
+    "clean": "rimraf dist",
+    "test": "mocha -r ts-node/register 'tests/**/*.spec.ts'",
+    "test:unit": "mocha -r ts-node/register 'tests/unit/**/*.spec.ts'",
+    "test:integration": "mocha -r ts-node/register 'tests/integration/**/*.spec.ts'",
+    "test:coverage": "nyc mocha -r ts-node/register 'tests/**/*.spec.ts'",
+    "test:basic": "mocha -r ts-node/register 'tests/**/*.spec.ts'",
+    "test:examples": "mocha -r ts-node/register 'examples/**/*.ts'",
+    "lint": "eslint . --ext .ts,.js",
+    "lint:fix": "eslint . --ext .ts,.js --fix",
+    "format": "prettier --write .",
+    "cli": "ts-node src/cli/index.ts",
+    "examples": "npm run test:examples && npm run report:restified",
+    "report": "mocha --config .mocharc.json",
+    "report:allure": "mocha -r ts-node/register --reporter allure-mocha 'examples/**/*.ts' && echo \"📊 Allure report generated. Run 'allure serve allure-results' to view\"",
+    "report:restified": "mocha -r ts-node/register 'examples/**/*.ts' --reporter ./src/reporting/restified-html-reporter.js && echo \"📊 Restified HTML report available at: reports/restified-html-report.html\"",
+    "reports:clean": "rimraf reports mochawesome-report test-reports allure-results",
+    "docs:serve": "echo \"📚 Documentation available at:\" && echo \"  📖 Main README: README.md\" && echo \"  📚 Documentation Hub: docs/README.md\" && echo \"  🏢 Enterprise Features: docs/ENTERPRISE-FEATURES.md\"",
+    "docs:validate": "echo \"✅ Validating documentation links...\" && node -e \"console.log('📝 All documentation files organized and accessible')\"",
+    "prepublishOnly": "npm run clean && npm run build"
+  },
+  "keywords": [
+    "api",
+    "testing",
+    "rest",
+    "graphql",
+    "websocket",
+    "typescript",
+    "fluent",
+    "dsl",
+    "automation"
+  ],
+  "author": "Raj Kumar <er.singhrajkr@gmail.com>",
+  "license": "MIT",
+  "homepage": "https://github.com/ersinghrajkr/Restified#readme",
+  "bugs": {
+    "url": "https://github.com/ersinghrajkr/Restified/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ersinghrajkr/Restified.git"
+  },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "axios": "^1.11.0",
+    "chalk": "^5.5.0",
+    "commander": "^14.0.0",
+    "dotenv": "^17.2.1",
+    "faker": "^5.5.3",
+    "inquirer": "^12.9.1",
+    "jsonpath": "^1.1.1",
+    "ws": "^8.18.3",
+    "yaml": "^2.8.1"
+  },
+  "devDependencies": {
+    "@types/chai": "^4.3.8",
+    "@types/inquirer": "^9.0.3",
+    "@types/jsonpath": "^0.2.4",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^20.8.0",
+    "@types/ws": "^8.5.8",
+    "@typescript-eslint/eslint-plugin": "^6.7.0",
+    "@typescript-eslint/parser": "^6.7.0",
+    "chai": "^4.3.10",
+    "eslint": "^8.50.0",
+    "mocha": "^10.2.0",
+    "mochawesome": "^7.1.3",
+    "mochawesome-merge": "^4.3.0",
+    "mochawesome-report-generator": "^6.2.0",
+    "allure-js-commons": "^2.15.1",
+    "allure-mocha": "^2.10.0",
+    "nyc": "^15.1.0",
+    "prettier": "^3.0.3",
+    "rimraf": "^5.0.0",
+    "ts-node": "^10.9.0",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.2.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

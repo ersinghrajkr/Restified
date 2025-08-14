@@ -1,0 +1,45 @@
+{
+  "require": [
+    "ts-node/register",
+    "tsconfig-paths/register"
+  ],
+  "spec": [
+    "examples/setup/global-setup.ts",
+    "examples/basic/*.ts",
+    "examples/advanced/*.ts",
+    "examples/authentication/*.ts"
+  ],
+  "ignore": [
+    "examples/setup/test-utils.ts"
+  ],
+  "reporter": "mochawesome",
+  "reporter-options": {
+    "reportDir": "reports",
+    "reportFilename": "enterprise-test-report",
+    "html": true,
+    "json": true,
+    "overwrite": true,
+    "charts": true,
+    "code": true,
+    "enableCharts": true,
+    "enableCode": true,
+    "showPassed": true,
+    "showSkipped": true,
+    "showPending": true,
+    "showHooks": false,
+    "saveJson": true,
+    "consoleReporter": "none",
+    "maxLogLength": 50000,
+    "inlineAssets": true,
+    "autoOpen": false,
+    "timestamp": "yyyy-mm-dd_HH-MM-ss",
+    "enableTitle": true,
+    "reportTitle": "Restified Enterprise API Test Report",
+    "reportPageTitle": "Enterprise API Testing Results",
+    "useInlineDiffs": true,
+    "enableTestCode": true,
+    "enableRequestResponse": true
+  },
+  "timeout": 10000,
+  "exit": true
+}

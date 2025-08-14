@@ -1,0 +1,55 @@
+# Source files - only ship compiled JS
+src/
+tests/
+examples/
+
+# Development files
+tsconfig.json
+.eslintrc.js
+.prettierrc
+.prettierignore
+*.config.js
+*.config.ts
+
+# Documentation that shouldn't be published
+CLAUDE.md
+CONTRIBUTING.md
+SECURITY.md
+.github/
+
+# Development dependencies
+node_modules/
+coverage/
+.nyc_output/
+reports/
+test-results/
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Git files
+.git/
+.gitignore
+
+# CI/CD files
+.travis.yml
+.circleci/
+.github/
+
+# Environment files
+.env*
+
+# Logs
+*.log
+logs/
+
+# Cache directories
+.cache/
+*.tsbuildinfo
+
+# Development scripts and configs
+scripts/dev/
+scripts/test/
