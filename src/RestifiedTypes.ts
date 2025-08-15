@@ -144,6 +144,8 @@ export interface RestifiedConfig {
   // Enterprise-specific configurations
   performance?: PerformanceConfig;
   security?: SecurityConfig;
+  databases?: Record<string, DatabaseConfigEntry>;
+  databaseStateManagement?: DatabaseStateManagementConfig;
 }
 
 export interface VariableContext {
@@ -224,4 +226,127 @@ export interface SecurityConfig {
   scanTypes: string[];
   complianceFrameworks: string[];
   sensitiveDataPatterns: string[];
+}
+
+// Database Configuration Types
+export interface DatabasePoolConfig {
+  min?: number;
+  max?: number;
+  idleTimeoutMillis?: number;
+  acquireTimeoutMillis?: number;
+  createTimeoutMillis?: number;
+  destroyTimeoutMillis?: number;
+  reapIntervalMillis?: number;
+  createRetryIntervalMillis?: number;
+}
+
+export interface DatabaseConfigOptions {
+  // Common options
+  ssl?: boolean | {
+    ca?: string;
+    cert?: string;
+    key?: string;
+    rejectUnauthorized?: boolean;
+    servername?: string;
+  };
+  
+  // MySQL/MariaDB specific
+  charset?: string;
+  timezone?: string;
+  acquireTimeout?: number;
+  multipleStatements?: boolean;
+  supportBigNumbers?: boolean;
+  bigNumberStrings?: boolean;
+  dateStrings?: boolean;
+  debug?: boolean;
+  trace?: boolean;
+  stringifyObjects?: boolean;
+  reconnect?: boolean;
+  queueLimit?: number;
+  
+  // PostgreSQL specific
+  schema?: string;
+  application_name?: string;
+  search_path?: string;
+  client_encoding?: string;
+  
+  // SQLite specific
+  filename?: string;
+  memory?: boolean;
+  readonly?: boolean;
+  fileMustExist?: boolean;
+  journalMode?: string;
+  synchronous?: string;
+  tempStore?: string;
+  mmapSize?: number;
+  cacheSize?: number;
+  pragmas?: Record<string, any>;
+  functions?: Record<string, Function>;
+  
+  // MongoDB specific
+  authSource?: string;
+  replicaSet?: string;
+  readPreference?: string;
+  writeConcern?: any;
+  maxPoolSize?: number;
+  minPoolSize?: number;
+  maxIdleTimeMS?: number;
+  serverSelectionTimeoutMS?: number;
+  socketTimeoutMS?: number;
+  connectTimeoutMS?: number;
+  heartbeatFrequencyMS?: number;
+  retryWrites?: boolean;
+  retryReads?: boolean;
+  compressors?: string[];
+  
+  // Redis specific
+  family?: number;
+  keyPrefix?: string;
+  retryDelayOnFailover?: number;
+  enableOfflineQueue?: boolean;
+  maxRetriesPerRequest?: number;
+  retryConnectOnFailure?: boolean;
+  lazyConnect?: boolean;
+  keepAlive?: number;
+  commandTimeout?: number;
+  maxmemoryPolicy?: string;
+  
+  // SQL Server specific
+  server?: string;
+  user?: string;
+  domain?: string;
+  connectionTimeout?: number;
+  requestTimeout?: number;
+  cancelTimeout?: number;
+  authentication?: any;
+  
+  // Generic options
+  [key: string]: any;
+}
+
+export interface DatabaseConfigEntry {
+  type: 'mysql' | 'postgresql' | 'sqlite' | 'mongodb' | 'redis' | 'mssql' | 'oracle' | 'elasticsearch';
+  host?: string;
+  port?: number;
+  username?: string;
+  password?: string;
+  database?: string;
+  connectionString?: string;
+  timeout?: number;
+  pool?: DatabasePoolConfig;
+  options?: DatabaseConfigOptions;
+}
+
+export interface DatabaseStateManagementConfig {
+  enabled: boolean;
+  autoCleanup: boolean;
+  enableSnapshots: boolean;
+  snapshotRetention: number;
+  healthCheckInterval: number;
+  enableHealthChecks: boolean;
+  defaultTransactionTimeout: number;
+  enableTransactionLogging: boolean;
+  enableMigrations: boolean;
+  seedDataPath: string;
+  migrationPath: string;
 }

@@ -241,7 +241,48 @@ const config: RestifiedConfig = {
     MONITORING_ENABLED: process.env.MONITORING_ENABLED || 'true',
     METRICS_ENDPOINT: process.env.METRICS_ENDPOINT || '',
     TRACING_ENDPOINT: process.env.TRACING_ENDPOINT || '',
-    LOG_LEVEL: process.env.LOG_LEVEL || 'info'
+    LOG_LEVEL: process.env.LOG_LEVEL || 'info',
+    
+    // Database Environment Variables
+    DB_HOST: process.env.DB_HOST || 'localhost',
+    DB_PORT: process.env.DB_PORT || '5432',
+    DB_NAME: process.env.DB_NAME || 'testdb',
+    DB_USERNAME: process.env.DB_USERNAME || 'postgres',
+    DB_PASSWORD: process.env.DB_PASSWORD || 'password',
+    DB_CONNECTION_STRING: process.env.DB_CONNECTION_STRING || '',
+    DB_SSL: process.env.DB_SSL || 'false',
+    
+    // Redis Configuration
+    REDIS_HOST: process.env.REDIS_HOST || 'localhost',
+    REDIS_PORT: process.env.REDIS_PORT || '6379',
+    REDIS_PASSWORD: process.env.REDIS_PASSWORD || '',
+    REDIS_DATABASE: process.env.REDIS_DATABASE || '0',
+    
+    // MySQL Configuration
+    MYSQL_HOST: process.env.MYSQL_HOST || 'localhost',
+    MYSQL_PORT: process.env.MYSQL_PORT || '3306',
+    MYSQL_DATABASE: process.env.MYSQL_DATABASE || 'analytics',
+    MYSQL_USERNAME: process.env.MYSQL_USERNAME || 'root',
+    MYSQL_PASSWORD: process.env.MYSQL_PASSWORD || 'password',
+    
+    // MongoDB Configuration
+    MONGO_CONNECTION_STRING: process.env.MONGO_CONNECTION_STRING || 'mongodb://localhost:27017/testdb',
+    MONGO_HOST: process.env.MONGO_HOST || 'localhost',
+    MONGO_PORT: process.env.MONGO_PORT || '27017',
+    MONGO_DATABASE: process.env.MONGO_DATABASE || 'documents',
+    MONGO_USERNAME: process.env.MONGO_USERNAME || '',
+    MONGO_PASSWORD: process.env.MONGO_PASSWORD || '',
+    
+    // SQL Server Configuration
+    MSSQL_HOST: process.env.MSSQL_HOST || 'localhost',
+    MSSQL_PORT: process.env.MSSQL_PORT || '1433',
+    MSSQL_DATABASE: process.env.MSSQL_DATABASE || 'enterprise',
+    MSSQL_USERNAME: process.env.MSSQL_USERNAME || 'sa',
+    MSSQL_PASSWORD: process.env.MSSQL_PASSWORD || 'YourStrong!Passw0rd',
+    
+    // SQLite Configuration
+    SQLITE_FILENAME: process.env.SQLITE_FILENAME || ':memory:',
+    SQLITE_MEMORY: process.env.SQLITE_MEMORY || 'true'
   },
 
   // 📈 Enterprise Reporting & Analytics Configuration
@@ -312,6 +353,158 @@ const config: RestifiedConfig = {
       critical: true
     }
   ],
+
+  // 🗄️ Enterprise Database Configuration
+  databases: {
+    // Primary Database (PostgreSQL)
+    primary: {
+      type: 'postgresql' as const,
+      host: process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.DB_PORT || '5432'),
+      database: process.env.DB_NAME || 'testdb',
+      username: process.env.DB_USERNAME || 'postgres',
+      password: process.env.DB_PASSWORD || 'password',
+      connectionString: process.env.DB_CONNECTION_STRING || '',
+      timeout: parseInt(process.env.DB_TIMEOUT || '30000'),
+      pool: {
+        min: parseInt(process.env.DB_POOL_MIN || '1'),
+        max: parseInt(process.env.DB_POOL_MAX || '10'),
+        idleTimeoutMillis: parseInt(process.env.DB_IDLE_TIMEOUT || '30000'),
+        acquireTimeoutMillis: parseInt(process.env.DB_ACQUIRE_TIMEOUT || '60000')
+      },
+      options: {
+        ssl: process.env.DB_SSL === 'true',
+        application_name: process.env.DB_APP_NAME || 'RestifiedTS-Enterprise',
+        schema: process.env.DB_SCHEMA || 'public',
+        search_path: process.env.DB_SEARCH_PATH || 'public'
+      }
+    },
+
+    // Cache Database (Redis)
+    cache: {
+      type: 'redis' as const,
+      host: process.env.REDIS_HOST || 'localhost',
+      port: parseInt(process.env.REDIS_PORT || '6379'),
+      password: process.env.REDIS_PASSWORD || '',
+      timeout: parseInt(process.env.REDIS_TIMEOUT || '10000'),
+      options: {
+        database: parseInt(process.env.REDIS_DATABASE || '0'),
+        keyPrefix: process.env.REDIS_KEY_PREFIX || 'restified:test:',
+        maxRetriesPerRequest: parseInt(process.env.REDIS_MAX_RETRIES || '3'),
+        lazyConnect: process.env.REDIS_LAZY_CONNECT !== 'false',
+        commandTimeout: parseInt(process.env.REDIS_COMMAND_TIMEOUT || '5000')
+      }
+    },
+
+    // Analytics Database (MySQL)
+    analytics: {
+      type: 'mysql' as const,
+      host: process.env.MYSQL_HOST || 'localhost',
+      port: parseInt(process.env.MYSQL_PORT || '3306'),
+      database: process.env.MYSQL_DATABASE || 'analytics',
+      username: process.env.MYSQL_USERNAME || 'root',
+      password: process.env.MYSQL_PASSWORD || 'password',
+      timeout: parseInt(process.env.MYSQL_TIMEOUT || '60000'),
+      pool: {
+        min: parseInt(process.env.MYSQL_POOL_MIN || '1'),
+        max: parseInt(process.env.MYSQL_POOL_MAX || '10')
+      },
+      options: {
+        charset: process.env.MYSQL_CHARSET || 'utf8mb4',
+        timezone: process.env.MYSQL_TIMEZONE || 'UTC',
+        ssl: process.env.MYSQL_SSL === 'true',
+        multipleStatements: process.env.MYSQL_MULTIPLE_STATEMENTS === 'true',
+        reconnect: process.env.MYSQL_RECONNECT !== 'false'
+      }
+    },
+
+    // Document Database (MongoDB)
+    documents: {
+      type: 'mongodb' as const,
+      connectionString: process.env.MONGO_CONNECTION_STRING || 'mongodb://localhost:27017/testdb',
+      host: process.env.MONGO_HOST || 'localhost',
+      port: parseInt(process.env.MONGO_PORT || '27017'),
+      database: process.env.MONGO_DATABASE || 'documents',
+      username: process.env.MONGO_USERNAME || '',
+      password: process.env.MONGO_PASSWORD || '',
+      timeout: parseInt(process.env.MONGO_TIMEOUT || '30000'),
+      options: {
+        authSource: process.env.MONGO_AUTH_SOURCE || 'admin',
+        maxPoolSize: parseInt(process.env.MONGO_MAX_POOL_SIZE || '10'),
+        minPoolSize: parseInt(process.env.MONGO_MIN_POOL_SIZE || '1'),
+        maxIdleTimeMS: parseInt(process.env.MONGO_MAX_IDLE_TIME || '30000'),
+        serverSelectionTimeoutMS: parseInt(process.env.MONGO_SERVER_SELECTION_TIMEOUT || '5000'),
+        retryWrites: process.env.MONGO_RETRY_WRITES !== 'false',
+        retryReads: process.env.MONGO_RETRY_READS !== 'false'
+      }
+    },
+
+    // Test Database (SQLite - for local testing)
+    test: {
+      type: 'sqlite' as const,
+      options: {
+        filename: process.env.SQLITE_FILENAME || ':memory:',
+        memory: process.env.SQLITE_MEMORY !== 'false',
+        readonly: process.env.SQLITE_READONLY === 'true',
+        timeout: parseInt(process.env.SQLITE_TIMEOUT || '5000'),
+        journalMode: process.env.SQLITE_JOURNAL_MODE || 'WAL',
+        synchronous: process.env.SQLITE_SYNCHRONOUS || 'NORMAL',
+        pragmas: {
+          'foreign_keys': 'ON',
+          'journal_size_limit': 67108864,
+          'cache_size': parseInt(process.env.SQLITE_CACHE_SIZE || '2000')
+        }
+      }
+    },
+
+    // Enterprise Database (SQL Server)
+    enterprise: {
+      type: 'mssql' as const,
+      host: process.env.MSSQL_HOST || 'localhost',
+      port: parseInt(process.env.MSSQL_PORT || '1433'),
+      database: process.env.MSSQL_DATABASE || 'enterprise',
+      username: process.env.MSSQL_USERNAME || 'sa',
+      password: process.env.MSSQL_PASSWORD || 'YourStrong!Passw0rd',
+      timeout: parseInt(process.env.MSSQL_TIMEOUT || '15000'),
+      pool: {
+        min: parseInt(process.env.MSSQL_POOL_MIN || '0'),
+        max: parseInt(process.env.MSSQL_POOL_MAX || '10')
+      },
+      options: {
+        encrypt: process.env.MSSQL_ENCRYPT !== 'false',
+        trustServerCertificate: process.env.MSSQL_TRUST_SERVER_CERT !== 'false',
+        enableArithAbort: process.env.MSSQL_ENABLE_ARITH_ABORT !== 'false',
+        requestTimeout: parseInt(process.env.MSSQL_REQUEST_TIMEOUT || '30000'),
+        connectionTimeout: parseInt(process.env.MSSQL_CONNECTION_TIMEOUT || '15000')
+      }
+    }
+  },
+
+  // 🗄️ Database State Management Configuration
+  databaseStateManagement: {
+    // Enable database state validation in tests
+    enabled: process.env.DB_STATE_VALIDATION !== 'false',
+    
+    // Automatic cleanup after test suites
+    autoCleanup: process.env.DB_AUTO_CLEANUP !== 'false',
+    
+    // Snapshot configuration
+    enableSnapshots: process.env.DB_ENABLE_SNAPSHOTS === 'true',
+    snapshotRetention: parseInt(process.env.DB_SNAPSHOT_RETENTION || '24'), // hours
+    
+    // Health check configuration
+    healthCheckInterval: parseInt(process.env.DB_HEALTH_CHECK_INTERVAL || '60000'), // ms
+    enableHealthChecks: process.env.DB_ENABLE_HEALTH_CHECKS !== 'false',
+    
+    // Transaction configuration
+    defaultTransactionTimeout: parseInt(process.env.DB_DEFAULT_TX_TIMEOUT || '30000'),
+    enableTransactionLogging: process.env.DB_ENABLE_TX_LOGGING === 'true',
+    
+    // Migration and seeding
+    enableMigrations: process.env.DB_ENABLE_MIGRATIONS === 'true',
+    seedDataPath: process.env.DB_SEED_DATA_PATH || './test-data/seeds',
+    migrationPath: process.env.DB_MIGRATION_PATH || './test-data/migrations'
+  },
 
   // 🚀 Enterprise Performance & Load Testing
   performance: {

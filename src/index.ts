@@ -19,12 +19,27 @@ export { ResponseStore } from '@core/stores/response.core';
 // Configuration
 export { ConfigManager, configManager } from '@core/config/config.core';
 
+// Client types
+export { GraphQLClient } from '@core/clients/GraphQLClient';
+export { WebSocketClient } from '@core/clients/WebSocketClient';
+export { DatabaseManager } from '@core/database/DatabaseManager';
+export { DatabaseClient } from '@core/database/DatabaseClient';
+export { PostgreSQLClient } from '@core/database/PostgreSQLClient';
+export { MongoDBClient } from '@core/database/MongoDBClient';
+
+// Utility system exports
+export { UtilityManager } from '@core/utils/UtilityManager';
+export { UtilityRegistry } from '@core/utils/UtilityRegistry';
+export { StringUtilities, DateUtilities, MathUtilities, RandomUtilities, ValidationUtilities } from '@core/utils/CoreUtilities';
+export { DataTransformationUtilities } from '@core/utils/DataUtilities';
+export { CryptographicUtilities, SecurityUtilities } from '@core/utils/SecurityUtilities';
+export { FileUtilities, EncodingUtilities, NetworkUtilities } from '@core/utils/FileUtilities';
+export { UtilityUsageExamples, ExampleCustomPlugin, quickStartExample } from '@core/utils/UtilityExamples';
+
 // Types
 export * from './RestifiedTypes';
 export * from '@core/auth/AuthTypes';
-
-// Utilities (to be implemented)
-// export * from './utils';
+export * from '@core/utils/UtilityTypes';
 
 // Default export for convenience  
 export { restified as default } from '@core/Restified';
