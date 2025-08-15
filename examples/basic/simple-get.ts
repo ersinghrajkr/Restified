@@ -20,13 +20,13 @@ try {
 describe('Simple GET Request Example', function() {
   this.timeout(10000);
 
-  this.beforeAll(async function() {
+  this.beforeAll('Simple GET',async function() {
     GlobalTestUtils.logTestProgress('Simple GET', 'Global Setup');
     
     expect(true).to.be.true; // Ensure global setup is complete
   });
 
-  this.afterAll(async function() {
+  this.afterAll('Simple GET',async function() {
     GlobalTestUtils.logTestProgress('Simple GET', 'Global Setup');
     expect(true).to.be.true; // Ensure global setup is complete
   });

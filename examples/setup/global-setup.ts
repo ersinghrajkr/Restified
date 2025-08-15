@@ -41,7 +41,7 @@ const isReportingEnabled = process.argv.includes('--reporter') ||
 let config: RestifiedConfig;
 
 // Global setup - runs once before all test suites
-before(async function() {
+before('Before', async function() {
   this.timeout(30000); // Allow time for setup
   
   console.log('\n🚀 === GLOBAL SETUP: Initializing Restified ===');
@@ -225,7 +225,7 @@ before(async function() {
 });
 
 // Global teardown - runs once after all test suites
-after(async function() {
+after('After', async function() {
   this.timeout(10000);
   
   console.log('\n🧹 === GLOBAL TEARDOWN: Cleaning Up ===');

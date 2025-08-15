@@ -11,13 +11,21 @@ import { GlobalTestUtils } from '../setup/test-utils';
 
 describe('Bearer Token Authentication Example', function() {
   this.timeout(10000);
- this.beforeAll(async function() {
+   this.beforeAll('Bearer Token',async function() {
     GlobalTestUtils.logTestProgress('Simple GET', 'Global Setup');
-
     expect(true).to.be.true; // Ensure global setup is complete
   });
 
-  this.afterAll(async function() {
+  this.afterAll('Bearer Token',async function() {
+    GlobalTestUtils.logTestProgress('Simple GET', 'Global Setup');
+    expect(true).to.be.true; // Ensure global setup is complete
+  });
+ this.beforeEach('Bearer Token',async function() {
+    GlobalTestUtils.logTestProgress('Simple GET', 'Global Setup');
+    expect(true).to.be.true; // Ensure global setup is complete
+  });
+
+  this.afterEach('Bearer Token',async function() {
     GlobalTestUtils.logTestProgress('Simple GET', 'Global Setup');
   
     expect(true).to.be.true; // Ensure global setup is complete

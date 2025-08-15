@@ -127,7 +127,7 @@ export class RestifiedHtmlReporter {
                 <div class="detail-section">
                     <h4 onclick="toggleDetail(this); event.stopPropagation();">🔧 Hook Details</h4>
                     <div class="detail-content">
-                        <div class="json-view">Hook Type: Setup/Teardown\nDuration: ${test.duration}ms\nStatus: ${test.status}</div>
+                        <div class="json-view">${this.formatHookDetails(test)}</div>
                     </div>
                 </div>
                 ` : ''}
@@ -197,6 +197,46 @@ export class RestifiedHtmlReporter {
     };
     
     return JSON.stringify(obj, null, 2);
+  }
+
+  private static formatHookDetails(test: any): string {
+    const hookTypeMap: Record<string, string> = {
+      'before': 'Global Setup (before all tests)',
+      'after': 'Global Cleanup (after all tests)',
+      'beforeEach': 'Test Setup (before each test)',
+      'afterEach': 'Test Cleanup (after each test)',
+      'hook': 'Setup/Teardown Hook',
+      'unknown': 'Setup/Teardown Hook'
+    };
+
+    const hookType = hookTypeMap[test.hookType || 'unknown'] || 'Setup/Teardown Hook';
+    const duration = test.duration ? `${test.duration}ms` : '0ms';
+    const status = test.status || 'passed';
+    const error = test.error ? `\nError: ${test.error}` : '';
+    const hookCode = test.hookCode || 'Code not available';
+    
+    return `Hook Type: ${hookType}
+Execution Time: ${duration}
+Status: ${status.toUpperCase()}
+Purpose: ${this.getHookPurpose(test)}
+
+=== Hook Implementation ===
+${hookCode}${error}`;
+  }
+
+  private static getHookPurpose(test: any): string {
+    if (!test.hookType) return 'General setup or cleanup operations';
+    
+    const purposeMap: Record<string, string> = {
+      'before': 'Initialize global test environment, configure clients, perform authentication',
+      'after': 'Clean up resources, generate reports, restore system state',
+      'beforeEach': 'Prepare test data, reset state, setup test-specific conditions',
+      'afterEach': 'Clean up test data, reset variables, restore clean state',
+      'hook': 'Perform setup or cleanup operations',
+      'unknown': 'Execute necessary preparation or cleanup tasks'
+    };
+
+    return purposeMap[test.hookType] || 'Execute setup or cleanup operations';
   }
 
   private static escapeHtml(text: string): string {
@@ -355,6 +395,8 @@ export class RestifiedHtmlReporter {
         .detail-content { background: #f7fafc; padding: 15px; border-radius: 5px; display: none; max-height: 400px; overflow: auto; }
         .detail-section.expanded .detail-content { display: block; }
         .json-view { font-family: 'Courier New', monospace; font-size: 0.9em; white-space: pre-wrap; word-break: break-all; }
+        .hook-item .json-view { background: #f0f4ff; border: 1px solid #d0d9ff; color: #2d3748; }
+        .hook-item .detail-content { background: #f8faff; }
         
         .status-counter { background: #edf2f7; padding: 10px 20px; border-radius: 25px; margin-bottom: 20px; text-align: center; font-weight: 500; }
         
@@ -651,7 +693,7 @@ export class RestifiedHtmlReporter {
                         <div class="detail-section">
                             <h4 onclick="toggleDetail(this); event.stopPropagation();">🔧 Hook Details</h4>
                             <div class="detail-content">
-                                <div class="json-view">Hook Type: Setup/Teardown\\nDuration: \${test.duration}ms\\nStatus: \${test.status}</div>
+                                <div class="json-view">\${formatHookDetails(test)}</div>
                             </div>
                         </div>
                         \` : ''}
@@ -757,6 +799,40 @@ export class RestifiedHtmlReporter {
                 body: response.body || response.data
             };
             return JSON.stringify(obj, null, 2);
+        }
+        
+        function formatHookDetails(test) {
+            const hookTypeMap = {
+                'before': 'Global Setup (before all tests)',
+                'after': 'Global Cleanup (after all tests)',
+                'beforeEach': 'Test Setup (before each test)',
+                'afterEach': 'Test Cleanup (after each test)',
+                'hook': 'Setup/Teardown Hook',
+                'unknown': 'Setup/Teardown Hook'
+            };
+
+            const purposeMap = {
+                'before': 'Initialize global test environment, configure clients, perform authentication',
+                'after': 'Clean up resources, generate reports, restore system state',
+                'beforeEach': 'Prepare test data, reset state, setup test-specific conditions',
+                'afterEach': 'Clean up test data, reset variables, restore clean state',
+                'hook': 'Perform setup or cleanup operations',
+                'unknown': 'Execute necessary preparation or cleanup tasks'
+            };
+
+            const hookType = hookTypeMap[test.hookType || 'unknown'] || 'Setup/Teardown Hook';
+            const duration = test.duration ? test.duration + 'ms' : '0ms';
+            const status = (test.status || 'passed').toUpperCase();
+            const purpose = purposeMap[test.hookType || 'unknown'] || 'Execute setup or cleanup operations';
+            const hookCode = test.hookCode || 'Code not available';
+            const error = test.error ? '\\nError: ' + test.error : '';
+            
+            return 'Hook Type: ' + hookType + '\\n' +
+                   'Execution Time: ' + duration + '\\n' +
+                   'Status: ' + status + '\\n' +
+                   'Purpose: ' + purpose + '\\n\\n' +
+                   '=== Hook Implementation ===' + '\\n' +
+                   hookCode + error;
         }
         
         function escapeHtml(text) {

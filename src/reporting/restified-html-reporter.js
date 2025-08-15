@@ -45,21 +45,98 @@ function RestifiedReporter(runner) {
     runner.on('hook end', function(hook) {
         const duration = Date.now() - hook.startTime;
         
-        // Only capture hooks with meaningful names (not internal mocha hooks)
-        if (hook.title && !hook.title.startsWith('"')) {
-            const hookResult = {
-                id: `${hook.parent ? hook.parent.fullTitle() : 'Global'} - ${hook.title}`,
-                title: `🔧 ${hook.title} (${hook.parent ? hook.parent.title : 'Global'})`,
-                status: hook.state || (hook.err ? 'failed' : 'passed'),
-                duration: duration,
-                error: hook.err ? hook.err.message : null,
-                request: null,
-                response: null,
-                assertions: null,
-                isHook: true
-            };
+        
+        // Capture all hooks with titles (including global ones)
+        if (hook.title) {
+            let hookTitle = hook.title;
+            
+            // Clean up hook titles
+            if (hookTitle.startsWith('"') && hookTitle.endsWith('"')) {
+                hookTitle = hookTitle.slice(1, -1);
+            } else if (hookTitle.startsWith('"') && !hookTitle.endsWith('"')) {
+                // Handle malformed quotes like 'after all" hook in "{root}'
+                hookTitle = hookTitle.replace(/^"/, '').replace(/" hook in ".*$/, '');
+            }
+            
+            // Clean up common patterns and extract meaningful names
+            if (hookTitle.includes('hook:')) {
+                // Extract named hook: '"before all" hook: global setup hook'
+                hookTitle = hookTitle.split('hook:')[1]
+                    .replace(/\s+for\s+["'].*$/, '')  // Remove "for "test name"" or 'for "test name"'
+                    .trim();
+            } else {
+                // For unnamed hooks, just get the hook type
+                if (hookTitle.includes('"before all"')) {
+                    hookTitle = 'Global Setup';
+                } else if (hookTitle.includes('"after all"')) {
+                    hookTitle = 'Global Cleanup';
+                } else if (hookTitle.includes('"before each"')) {
+                    hookTitle = 'Test Setup';
+                } else if (hookTitle.includes('"after each"')) {
+                    hookTitle = 'Test Cleanup';
+                } else {
+                    hookTitle = hookTitle
+                        .replace(/^"(before|after)\s+(all|each)"\s+hook:\s*/, '')
+                        .replace(/\s+for\s+".*"$/, '')  // Remove "for "test name""
+                        .replace(/ hook$/, '')
+                        .replace(/^"/, '')
+                        .replace(/"$/, '')
+                        .trim();
+                }
+            }
+            
+            
+            // Skip empty or meaningless hooks but keep setup/teardown ones
+            if (hookTitle && 
+                !hookTitle.includes('should') && 
+                !hookTitle.includes('it ') &&
+                hookTitle.length > 0) {
+                // Determine hook type from title
+                let detectedHookType = 'unknown';
+                if (hook.title.includes('"before all"')) {
+                    detectedHookType = 'before';
+                } else if (hook.title.includes('"after all"')) {
+                    detectedHookType = 'after';
+                } else if (hook.title.includes('"before each"')) {
+                    detectedHookType = 'beforeEach';
+                } else if (hook.title.includes('"after each"')) {
+                    detectedHookType = 'afterEach';
+                }
 
-            RestifiedHtmlReporter.addTest(hookResult);
+                // Extract hook function code
+                let hookCode = 'Code not available';
+                try {
+                    if (hook.fn && typeof hook.fn === 'function') {
+                        hookCode = hook.fn.toString();
+                        // Clean up the code formatting
+                        hookCode = hookCode
+                            .replace(/^function\s*\([^)]*\)\s*\{/, '') // Remove function signature
+                            .replace(/\}$/, '') // Remove closing brace
+                            .split('\n')
+                            .map(line => line.replace(/^    /, '')) // Remove common indentation
+                            .join('\n')
+                            .trim();
+                    }
+                } catch (error) {
+                    hookCode = 'Unable to extract code: ' + error.message;
+                }
+
+                const hookResult = {
+                    id: `${hook.parent ? hook.parent.fullTitle() : 'Global'} - ${hookTitle}`,
+                    title: `🔧 ${hookTitle} (${hook.parent ? hook.parent.title || 'Global Suite' : 'Global'})`,
+                    status: hook.state || (hook.err ? 'failed' : 'passed'),
+                    duration: duration,
+                    error: hook.err ? hook.err.message : null,
+                    request: null,
+                    response: null,
+                    assertions: null,
+                    isHook: true,
+                    hookType: detectedHookType,
+                    hookCode: hookCode
+                };
+
+                RestifiedHtmlReporter.addTest(hookResult);
+            }
         }
     });
 
