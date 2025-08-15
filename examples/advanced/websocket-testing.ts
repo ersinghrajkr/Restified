@@ -4,7 +4,7 @@
  * Demonstrates comprehensive WebSocket real-time testing
  */
 
-import { restified } from 'restifiedts';
+import { restified } from '../../src/index';
 import { expect } from 'chai';
 
 describe('WebSocket Real-time Testing', function() {
@@ -28,7 +28,7 @@ describe('WebSocket Real-time Testing', function() {
     });
   });
 
-  afterAll(async function() {
+  after(async function() {
     await restified.cleanup();
   });
 

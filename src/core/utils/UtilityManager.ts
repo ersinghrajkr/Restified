@@ -126,7 +126,7 @@ export class UtilityManager {
   // Custom function registration
   registerFunction(category: string, name: string, execute: (...args: any[]) => any, options?: {
     description?: string;
-    parameters?: Array<{ name: string; type: string; required: boolean; description: string }>;
+    parameters?: Array<{ name: string; type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any'; required: boolean; description: string }>;
     isAsync?: boolean;
   }): void {
     this.registry.registerFunction(category, name, {

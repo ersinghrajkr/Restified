@@ -6,7 +6,6 @@ import { DatabaseClient, DatabaseConfig, QueryResult } from './DatabaseClient';
 import { VariableStore } from '../stores/variable.core';
 
 export class MySQLClient extends DatabaseClient {
-  private connection: any = null;
   private pool: any = null;
   private transaction: any = null;
   private mysqlModule: any = null;

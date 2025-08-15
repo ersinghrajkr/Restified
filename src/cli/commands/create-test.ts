@@ -1625,7 +1625,7 @@ async function generatePackageScripts(outputDir: string, options: any): Promise<
       "sqlite3": { "optional": true },
       "redis": { "optional": true },
       "mssql": { "optional": true }
-    };
+    } as any;
   }
 
   // Add GraphQL dependencies if GraphQL tests are requested

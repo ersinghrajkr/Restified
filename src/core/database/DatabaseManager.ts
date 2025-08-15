@@ -13,6 +13,15 @@ import { RedisClient } from './RedisClient';
 import { MSSQLClient } from './MSSQLClient';
 import { VariableStore } from '../stores/variable.core';
 
+interface ExpectedRange {
+  min?: number;
+  max?: number;
+}
+
+interface ExpectedResult {
+  [key: string]: any | ExpectedRange;
+}
+
 export class DatabaseManager {
   private clients: Map<string, DatabaseClient> = new Map();
   private variableStore: VariableStore;
@@ -379,7 +388,7 @@ export class DatabaseManager {
   /**
    * Helper to validate query results
    */
-  private validateQueryResult(queryResult: any, expectedResult: any): boolean {
+  private validateQueryResult(queryResult: any, expectedResult: ExpectedResult): boolean {
     if (!queryResult.rows || !queryResult.rows.length) {
       return false;
     }
@@ -389,11 +398,12 @@ export class DatabaseManager {
     for (const [key, expected] of Object.entries(expectedResult)) {
       const actual = row[key];
       
-      if (typeof expected === 'object' && expected !== null) {
-        if (expected.min !== undefined && actual < expected.min) {
+      if (typeof expected === 'object' && expected !== null && 'min' in expected || 'max' in expected) {
+        const range = expected as ExpectedRange;
+        if (range.min !== undefined && actual < range.min) {
           return false;
         }
-        if (expected.max !== undefined && actual > expected.max) {
+        if (range.max !== undefined && actual > range.max) {
           return false;
         }
       } else if (actual !== expected) {

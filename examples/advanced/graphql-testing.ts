@@ -4,7 +4,7 @@
  * Demonstrates comprehensive GraphQL query and mutation testing
  */
 
-import { restified } from 'restifiedts';
+import { restified } from '../../src/index';
 import { expect } from 'chai';
 
 describe('GraphQL API Testing', function() {
@@ -26,7 +26,7 @@ describe('GraphQL API Testing', function() {
     restified.setGlobalVariable('repo', 'react');
   });
 
-  afterAll(async function() {
+  after(async function() {
     await restified.cleanup();
   });
 

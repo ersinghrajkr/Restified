@@ -69,7 +69,7 @@ async function demonstrateWorkingDatabaseFeatures() {
 
     console.log('✅ MongoDB client connected');
 
-    const mongoClient = restified.getClient('mongo');
+    const mongoClient = restified.getClient('mongo') as any;
     
     // Test MongoDB operations using helper methods
     const users = await mongoClient.findDocuments('users', { active: true }, { limit: 5 });
@@ -113,7 +113,7 @@ async function demonstrateWorkingDatabaseFeatures() {
 
       console.log('✅ MySQL client connected');
 
-      const mysqlClient = restified.getClient('mysql');
+      const mysqlClient = restified.getClient('mysql') as any;
       const mysqlResult = await mysqlClient.query('SELECT NOW() as current_time, ? as test_param', ['hello']);
       console.log('✅ MySQL query result:', mysqlResult.rows?.[0]);
 
@@ -143,7 +143,7 @@ async function demonstrateWorkingDatabaseFeatures() {
 
       console.log('✅ SQLite client connected');
 
-      const sqliteClient = restified.getClient('sqlite');
+      const sqliteClient = restified.getClient('sqlite') as any;
       
       // Create test table
       await sqliteClient.query(`
@@ -195,7 +195,7 @@ async function demonstrateWorkingDatabaseFeatures() {
 
       console.log('✅ Redis client connected');
 
-      const redisClient = restified.getClient('redis');
+      const redisClient = restified.getClient('redis') as any;
       
       // Test basic Redis operations
       await redisClient.query('SET test_key test_value EX 60');
@@ -243,7 +243,7 @@ async function demonstrateWorkingDatabaseFeatures() {
 
       console.log('✅ SQL Server client connected');
 
-      const mssqlClient = restified.getClient('mssql');
+      const mssqlClient = restified.getClient('mssql') as any;
       const mssqlResult = await mssqlClient.query('SELECT GETDATE() as current_time, @param0 as test_param', ['hello']);
       console.log('✅ SQL Server query result:', mssqlResult.rows?.[0]);
 

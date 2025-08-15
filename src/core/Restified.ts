@@ -13,6 +13,7 @@ import { DatabaseConfig } from './database/DatabaseClient';
 import { UtilityManager } from './utils/UtilityManager';
 import { CustomUtilityPlugin, UtilityResult } from './utils/UtilityTypes';
 import { gracefulConfigManager } from './config/GracefulConfigManager';
+import { RestifiedHtmlReporter } from '../reporting/restified-html-reporter';
 import { RestifiedConfig, RequestConfig, HttpResponse, AssertionResult, AuthConfig } from '../RestifiedTypes';
 
 export class Restified {
@@ -47,6 +48,7 @@ export class Restified {
     
     this.initializeClients();
     this.loadConfigVariables();
+    this.configureReporting();
   }
 
   given(): GivenStep {
@@ -134,6 +136,10 @@ export class Restified {
     
     if (newConfig.variables) {
       this.loadConfigVariables();
+    }
+    
+    if (newConfig.reporting) {
+      this.configureReporting();
     }
   }
 
@@ -277,6 +283,12 @@ export class Restified {
   private loadConfigVariables(): void {
     if (this.config.variables) {
       this.variableStore.setGlobalVariables(this.config.variables);
+    }
+  }
+
+  private configureReporting(): void {
+    if (this.config.reporting) {
+      RestifiedHtmlReporter.configure(this.config.reporting);
     }
   }
 
@@ -498,7 +510,7 @@ export class Restified {
 
   registerCustomUtility(category: string, name: string, execute: (...args: any[]) => any, options?: {
     description?: string;
-    parameters?: Array<{ name: string; type: string; required: boolean; description: string }>;
+    parameters?: Array<{ name: string; type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any'; required: boolean; description: string }>;
     isAsync?: boolean;
   }): void {
     this.utilityManager.registerFunction(category, name, execute, options);

@@ -4,7 +4,7 @@
  * Demonstrates comprehensive database state validation and testing
  */
 
-import { restified } from 'restifiedts';
+import { restified } from '../../src/index';
 import { expect } from 'chai';
 
 describe('Database Integration Testing', function() {
@@ -40,7 +40,7 @@ describe('Database Integration Testing', function() {
     }
   });
 
-  afterAll(async function() {
+  after(async function() {
     await restified.cleanup();
   });
 
@@ -68,8 +68,7 @@ describe('Database Integration Testing', function() {
         .given()
           .baseURL('https://jsonplaceholder.typicode.com')
         .when()
-          .post('/users')
-          .json({
+          .post('/users', {
             name: 'Database Test User',
             email: 'dbtest@example.com',
             username: 'dbtestuser'
@@ -111,12 +110,12 @@ describe('Database Integration Testing', function() {
           client: 'postgres',
           table: 'orders',
           conditions: { status: 'pending' },
-          shouldExist: true
+          expectedCount: { min: 1 }
         }
       ]);
 
       // In real scenario, this would validate actual database state
-      expect(validationResult).to.have.property('passed');
+      expect(validationResult).to.have.property('success');
       expect(validationResult).to.have.property('results');
     });
 
@@ -297,7 +296,7 @@ describe('Database Integration Testing', function() {
       
       if (validations.length > 1) {
         const result = await restified.validateDatabaseState(validations);
-        expect(result.passed).to.be.a('boolean');
+        expect(result.success).to.be.a('boolean');
         expect(result.results).to.have.length(validations.length);
       }
     });

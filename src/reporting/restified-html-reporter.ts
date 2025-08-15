@@ -8,8 +8,10 @@ import * as path from 'path';
 
 export class RestifiedHtmlReporter {
   private static testResults: any[] = [];
+  private static reportConfig: any = {};
   private static suiteInfo = {
-    title: 'Restified API Test Report',
+    title: 'Restified Test Report',
+    subtitle: '',
     startTime: new Date(),
     endTime: new Date(),
     duration: 0,
@@ -22,7 +24,8 @@ export class RestifiedHtmlReporter {
   static reset(): void {
     this.testResults = [];
     this.suiteInfo = {
-      title: 'Restified API Test Report',
+      title: this.reportConfig.title || 'Restified Test Report',
+      subtitle: this.reportConfig.subtitle || '',
       startTime: new Date(),
       endTime: new Date(),
       duration: 0,
@@ -33,11 +36,23 @@ export class RestifiedHtmlReporter {
     };
   }
 
+  static configure(config: any): void {
+    this.reportConfig = config || {};
+    // Update current suite info if already initialized
+    if (this.suiteInfo) {
+      this.suiteInfo.title = this.reportConfig.title || 'Restified Test Report';
+      this.suiteInfo.subtitle = this.reportConfig.subtitle || '';
+    }
+  }
+
   static addTest(test: any): void {
     this.testResults.push(test);
   }
 
-  static generateReport(outputPath: string = 'reports/restified-html-report.html'): void {
+  static generateReport(outputPath?: string): void {
+    // Use configured filename if not provided
+    const defaultPath = this.reportConfig.filename || 'restified-html-report.html';
+    const finalPath = outputPath || `reports/${defaultPath}`;
     console.log(`🚀 Generating Restified HTML Report for ${this.testResults.length} tests...`);
     
     this.suiteInfo.endTime = new Date();
@@ -58,16 +73,19 @@ export class RestifiedHtmlReporter {
     // Group tests by suite name
     const suiteGroups = this.groupTestsBySuite(this.testResults);
 
-    const htmlContent = this.generateQuickFixHtml(groupedTests, suiteGroups);
+    // Calculate suite-level statistics
+    const suiteStats = this.calculateSuiteStats(suiteGroups);
+
+    const htmlContent = this.generateQuickFixHtml(groupedTests, suiteGroups, suiteStats);
     
     // Ensure directory exists
-    const dir = path.dirname(outputPath);
+    const dir = path.dirname(finalPath);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
     
-    fs.writeFileSync(outputPath, htmlContent, 'utf8');
-    console.log(`✅ Restified HTML Report generated: ${outputPath}`);
+    fs.writeFileSync(finalPath, htmlContent, 'utf8');
+    console.log(`✅ Restified HTML Report generated: ${finalPath}`);
     console.log(`📊 Performance: ${this.testResults.length} tests, ${Math.round(htmlContent.length / 1024)}KB`);
   }
 
@@ -125,7 +143,7 @@ export class RestifiedHtmlReporter {
   }
 
   private static formatRequest(request: any): string {
-    const obj = {
+    const obj: any = {
       method: request.method,
       url: request.url,
       headers: request.headers,
@@ -140,7 +158,7 @@ export class RestifiedHtmlReporter {
   }
 
   private static formatResponse(response: any): string {
-    const obj = {
+    const obj: any = {
       status: response.status,
       statusText: response.statusText,
       headers: response.headers,
@@ -156,6 +174,7 @@ export class RestifiedHtmlReporter {
     if (!text) return '';
     return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
+
 
   private static groupTestsBySuite(tests: any[]): any {
     const suites: any = {};
@@ -212,7 +231,28 @@ export class RestifiedHtmlReporter {
     return suites;
   }
 
-  private static generateQuickFixHtml(groupedTests: any, suiteGroups: any): string {
+  private static calculateSuiteStats(suiteGroups: any): any {
+    const suiteNames = Object.keys(suiteGroups);
+    const total = suiteNames.length;
+    let passed = 0;
+    let failed = 0;
+    let pending = 0;
+
+    suiteNames.forEach(suiteName => {
+      const suite = suiteGroups[suiteName];
+      if (suite.failed > 0) {
+        failed++;
+      } else if (suite.pending > 0) {
+        pending++;
+      } else if (suite.passed > 0) {
+        passed++;
+      }
+    });
+
+    return { total, passed, failed, pending };
+  }
+
+  private static generateQuickFixHtml(groupedTests: any, suiteGroups: any, suiteStats: any): string {
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -232,6 +272,7 @@ export class RestifiedHtmlReporter {
         .summary-card.passed h3 { color: #48bb78; }
         .summary-card.failed h3 { color: #f56565; }
         .summary-card.pending h3 { color: #ed8936; }
+        
         
         .filters { background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
         .filter-tabs { display: flex; border-bottom: 2px solid #e2e8f0; margin-bottom: 15px; }
@@ -289,26 +330,48 @@ export class RestifiedHtmlReporter {
 <body>
     <div class="container">
         <div class="header">
-            <h1>🚀 Restified Test Report</h1>
+            <h1>🚀 ${this.suiteInfo.title}</h1>
+            ${this.suiteInfo.subtitle ? `<p style="font-size: 1.1em; margin-bottom: 10px; opacity: 0.9;">${this.suiteInfo.subtitle}</p>` : ''}
             <p>Generated on ${this.suiteInfo.endTime.toLocaleDateString()} at ${this.suiteInfo.endTime.toLocaleTimeString()}</p>
         </div>
         
         <div class="summary">
             <div class="summary-card total">
                 <h3>${this.suiteInfo.total}</h3>
-                <p>Total Tests</p>
+                <p>Total Tests (100%)</p>
             </div>
             <div class="summary-card passed">
                 <h3>${this.suiteInfo.passed}</h3>
-                <p>Passed</p>
+                <p>Passed Tests (${this.suiteInfo.total > 0 ? Math.round((this.suiteInfo.passed / this.suiteInfo.total) * 100) : 0}%)</p>
             </div>
             <div class="summary-card failed">
                 <h3>${this.suiteInfo.failed}</h3>
-                <p>Failed</p>
+                <p>Failed Tests (${this.suiteInfo.total > 0 ? Math.round((this.suiteInfo.failed / this.suiteInfo.total) * 100) : 0}%)</p>
             </div>
             <div class="summary-card pending">
                 <h3>${this.suiteInfo.pending}</h3>
-                <p>Pending</p>
+                <p>Pending Tests (${this.suiteInfo.total > 0 ? Math.round((this.suiteInfo.pending / this.suiteInfo.total) * 100) : 0}%)</p>
+            </div>
+        </div>
+        
+        <div class="suite-summary">
+            <div class="summary">
+                <div class="summary-card total">
+                    <h3>${suiteStats.total}</h3>
+                    <p>Total Suites (100%)</p>
+                </div>
+                <div class="summary-card passed">
+                    <h3>${suiteStats.passed}</h3>
+                    <p>Passed Suites (${suiteStats.total > 0 ? Math.round((suiteStats.passed / suiteStats.total) * 100) : 0}%)</p>
+                </div>
+                <div class="summary-card failed">
+                    <h3>${suiteStats.failed}</h3>
+                    <p>Failed Suites (${suiteStats.total > 0 ? Math.round((suiteStats.failed / suiteStats.total) * 100) : 0}%)</p>
+                </div>
+                <div class="summary-card pending">
+                    <h3>${suiteStats.pending}</h3>
+                    <p>Pending Suites (${suiteStats.total > 0 ? Math.round((suiteStats.pending / suiteStats.total) * 100) : 0}%)</p>
+                </div>
             </div>
         </div>
         
@@ -320,10 +383,10 @@ export class RestifiedHtmlReporter {
             
             <div class="filter-content active" id="statusFilters">
                 <div class="filter-buttons">
-                    <button class="filter-btn active" data-filter="all">All (${this.suiteInfo.total})</button>
-                    <button class="filter-btn" data-filter="passed">✅ Passed (${this.suiteInfo.passed})</button>
-                    <button class="filter-btn" data-filter="failed">❌ Failed (${this.suiteInfo.failed})</button>
-                    <button class="filter-btn" data-filter="pending">⏳ Pending (${this.suiteInfo.pending})</button>
+                    <button class="filter-btn active" data-filter="all">All (${this.suiteInfo.total} - 100%)</button>
+                    <button class="filter-btn" data-filter="passed">✅ Passed (${this.suiteInfo.passed} - ${this.suiteInfo.total > 0 ? Math.round((this.suiteInfo.passed / this.suiteInfo.total) * 100) : 0}%)</button>
+                    <button class="filter-btn" data-filter="failed">❌ Failed (${this.suiteInfo.failed} - ${this.suiteInfo.total > 0 ? Math.round((this.suiteInfo.failed / this.suiteInfo.total) * 100) : 0}%)</button>
+                    <button class="filter-btn" data-filter="pending">⏳ Pending (${this.suiteInfo.pending} - ${this.suiteInfo.total > 0 ? Math.round((this.suiteInfo.pending / this.suiteInfo.total) * 100) : 0}%)</button>
                 </div>
             </div>
             
@@ -336,9 +399,9 @@ export class RestifiedHtmlReporter {
                                     <div class="suite-name">${this.escapeHtml(suite.name)}</div>
                                     <div class="suite-stats">
                                         ${suite.total} tests • 
-                                        <span style="color: #48bb78">${suite.passed} passed</span> • 
-                                        <span style="color: #f56565">${suite.failed} failed</span>
-                                        ${suite.pending > 0 ? ` • <span style="color: #ed8936">${suite.pending} pending</span>` : ''}
+                                        <span style="color: #48bb78">${suite.passed} passed (${suite.total > 0 ? Math.round((suite.passed / suite.total) * 100) : 0}%)</span> • 
+                                        <span style="color: #f56565">${suite.failed} failed (${suite.total > 0 ? Math.round((suite.failed / suite.total) * 100) : 0}%)</span>
+                                        ${suite.pending > 0 ? ` • <span style="color: #ed8936">${suite.pending} pending (${suite.total > 0 ? Math.round((suite.pending / suite.total) * 100) : 0}%)</span>` : ''}
                                     </div>
                                 </div>
                                 <div class="suite-toggle">▶</div>

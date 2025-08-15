@@ -4,7 +4,7 @@
  * Demonstrates comprehensive JSON fixture resolution with dynamic variables
  */
 
-import { restified } from 'restifiedts';
+import { restified } from '../../src/index';
 import { expect } from 'chai';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -314,8 +314,7 @@ describe('JSON Fixture Testing', function() {
         .given()
           .baseURL('https://jsonplaceholder.typicode.com')
         .when()
-          .post('/users')
-          .json(userData)
+          .post('/users', userData)
           .execute();
 
       await response

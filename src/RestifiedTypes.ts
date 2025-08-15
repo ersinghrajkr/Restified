@@ -86,6 +86,12 @@ export interface ReportingConfig {
   openAfterGeneration: boolean;
   includeRequestResponse: boolean;
   includeScreenshots: boolean;
+  
+  // Report customization
+  title?: string;                    // Custom report title (default: "Restified Test Report")
+  filename?: string;                 // Custom report filename (default: "restified-html-report.html")
+  subtitle?: string;                 // Optional subtitle/description
+  
   // Enterprise reporting features
   includeMetrics?: boolean;
   includeTracing?: boolean;
