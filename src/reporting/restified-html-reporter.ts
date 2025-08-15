@@ -303,11 +303,11 @@ export class RestifiedHtmlReporter {
         .test-list h2 { background: #667eea; color: white; padding: 20px; margin: 0; display: flex; justify-content: space-between; align-items: center; }
         .back-btn { background: rgba(255,255,255,0.2); border: none; color: white; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-size: 0.9em; transition: background 0.3s; }
         .back-btn:hover { background: rgba(255,255,255,0.3); }
-        .test-item { border-bottom: 1px solid #e2e8f0; padding: 20px; transition: background-color 0.2s; }
+        .test-item { border-bottom: 1px solid #e2e8f0; padding: 12px 16px; transition: background-color 0.2s; }
         .test-item:hover { background: #f7fafc; }
         .test-item:last-child { border-bottom: none; }
         .test-item.hidden { display: none; }
-        .test-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; cursor: pointer; padding: 8px; border-radius: 8px; transition: background-color 0.2s; }
+        .test-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; cursor: pointer; padding: 6px; border-radius: 8px; transition: background-color 0.2s; }
         .test-header:hover { background: rgba(102, 126, 234, 0.1); }
         .test-title { font-weight: bold; font-size: 1.1em; }
         .test-status { font-weight: bold; padding: 5px 10px; border-radius: 15px; font-size: 0.9em; }
@@ -315,9 +315,9 @@ export class RestifiedHtmlReporter {
         .test-status.failed { background: #fed7d7; color: #742a2a; }
         .test-status.pending { background: #feebc8; color: #7b341e; }
         .test-meta { color: #718096; font-size: 0.9em; }
-        .test-details { margin-top: 15px; display: none; }
+        .test-details { margin-top: 10px; display: none; }
         .test-item.expanded .test-details { display: block; }
-        .detail-section { margin: 15px 0; }
+        .detail-section { margin: 10px 0; }
         .detail-section h4 { background: #edf2f7; padding: 10px; margin: 0 0 10px 0; border-radius: 5px; cursor: pointer; user-select: none; }
         .detail-section h4:hover { background: #e2e8f0; }
         .detail-content { background: #f7fafc; padding: 15px; border-radius: 5px; display: none; max-height: 400px; overflow: auto; }
@@ -325,6 +325,22 @@ export class RestifiedHtmlReporter {
         .json-view { font-family: 'Courier New', monospace; font-size: 0.9em; white-space: pre-wrap; word-break: break-all; }
         
         .status-counter { background: #edf2f7; padding: 10px 20px; border-radius: 25px; margin-bottom: 20px; text-align: center; font-weight: 500; }
+        
+        .footer { background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%); color: white; padding: 40px 20px 20px; margin-top: 50px; border-radius: 10px; }
+        .footer-content { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 30px; max-width: 1200px; margin: 0 auto; }
+        .footer-section h4 { color: #90cdf4; margin-bottom: 15px; font-size: 1.1em; }
+        .footer-section p { margin-bottom: 8px; color: #cbd5e0; line-height: 1.5; }
+        .footer-section a { color: #90cdf4; text-decoration: none; transition: color 0.3s; }
+        .footer-section a:hover { color: #63b3ed; }
+        .footer-stats { display: flex; gap: 20px; margin-bottom: 15px; }
+        .footer-stat { background: rgba(255,255,255,0.1); padding: 10px 15px; border-radius: 8px; text-align: center; flex: 1; }
+        .footer-stat .number { font-size: 1.3em; font-weight: bold; color: #90cdf4; }
+        .footer-stat .label { font-size: 0.9em; color: #cbd5e0; }
+        .footer-bottom { border-top: 1px solid #4a5568; padding-top: 20px; margin-top: 30px; text-align: center; color: #a0aec0; }
+        .footer-links { display: flex; justify-content: center; gap: 20px; margin-bottom: 15px; flex-wrap: wrap; }
+        .footer-links a { padding: 5px 10px; border-radius: 5px; transition: background 0.3s; }
+        .footer-links a:hover { background: rgba(255,255,255,0.1); }
+        .tech-badge { background: rgba(144, 205, 244, 0.2); color: #90cdf4; padding: 4px 8px; border-radius: 12px; font-size: 0.8em; margin: 0 4px; }
     </style>
 </head>
 <body>
@@ -426,6 +442,60 @@ export class RestifiedHtmlReporter {
             </div>
         </div>
     </div>
+    
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>📊 Test Execution Summary</h4>
+                <div class="footer-stats">
+                    <div class="footer-stat">
+                        <div class="number">${this.suiteInfo.total}</div>
+                        <div class="label">Total Tests</div>
+                    </div>
+                    <div class="footer-stat">
+                        <div class="number">${Math.round(this.suiteInfo.duration / 1000)}s</div>
+                        <div class="label">Duration</div>
+                    </div>
+                    <div class="footer-stat">
+                        <div class="number">${this.suiteInfo.total > 0 ? Math.round((this.suiteInfo.passed / this.suiteInfo.total) * 100) : 0}%</div>
+                        <div class="label">Success Rate</div>
+                    </div>
+                </div>
+                <p><strong>Environment:</strong> ${process.env.NODE_ENV || 'development'}</p>
+                <p><strong>Generated:</strong> ${this.suiteInfo.endTime.toLocaleString()}</p>
+            </div>
+            
+            <div class="footer-section">
+                <h4>🛠️ Testing Framework</h4>
+                <p>Powered by <strong>RestifiedTS</strong> v1.0.0</p>
+                <p>Modern API testing framework inspired by RestAssured</p>
+                <div style="margin-top: 15px;">
+                    <span class="tech-badge">TypeScript</span>
+                    <span class="tech-badge">Axios</span>
+                    <span class="tech-badge">Mocha</span>
+                    <span class="tech-badge">HTML Reports</span>
+                </div>
+            </div>
+            
+            <div class="footer-section">
+                <h4>🔗 Resources & Support</h4>
+                <p><a href="https://github.com/restifiedts/restifiedts" target="_blank">📖 Documentation</a></p>
+                <p><a href="https://github.com/restifiedts/restifiedts/issues" target="_blank">🐛 Report Issues</a></p>
+                <p><a href="https://github.com/restifiedts/restifiedts/examples" target="_blank">📝 Examples</a></p>
+                <p><a href="https://npmjs.com/package/restifiedts" target="_blank">📦 NPM Package</a></p>
+            </div>
+        </div>
+        
+        <div class="footer-bottom">
+            <div class="footer-links">
+                <a href="https://github.com/restifiedts/restifiedts" target="_blank">GitHub</a>
+                <a href="https://npmjs.com/package/restifiedts" target="_blank">NPM</a>
+                <a href="mailto:support@restifiedts.dev">Support</a>
+                <a href="https://restifiedts.dev/changelog" target="_blank">Changelog</a>
+            </div>
+            <p>© ${new Date().getFullYear()} RestifiedTS. Built with ❤️ for modern API testing.</p>
+        </div>
+    </footer>
     
     <script>
         // Embed test data directly in the page

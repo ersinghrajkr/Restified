@@ -287,6 +287,9 @@ const config: RestifiedConfig = {
 
   // 📈 Enterprise Reporting & Analytics Configuration
   reporting: {
+    title: `Restified API Test Results - Title`,
+    filename: `restified-html-report-${new Date().toISOString().split('T')[0]}.html`,
+    subtitle: `Restified API Test Results - SubTitle`,
     enabled: process.env.REPORTING_ENABLED !== 'false',
     outputDir: process.env.REPORT_OUTPUT_DIR || 'reports',
     formats: ['html', 'json', 'xml', 'junit'],
