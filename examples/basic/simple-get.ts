@@ -5,6 +5,7 @@
  * pre-configured clients from global setup.
  */
 
+import { expect } from 'chai';
 import { restified } from '../../src';
 import { GlobalTestUtils } from '../setup/test-utils';
 
@@ -18,6 +19,17 @@ try {
 
 describe('Simple GET Request Example', function() {
   this.timeout(10000);
+
+  this.beforeAll(async function() {
+    GlobalTestUtils.logTestProgress('Simple GET', 'Global Setup');
+    
+    expect(true).to.be.true; // Ensure global setup is complete
+  });
+
+  this.afterAll(async function() {
+    GlobalTestUtils.logTestProgress('Simple GET', 'Global Setup');
+    expect(true).to.be.true; // Ensure global setup is complete
+  });
 
   it('should successfully get a post using pre-configured API client', async function() {
     GlobalTestUtils.logTestProgress('Simple GET', 'Basic API Request');

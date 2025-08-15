@@ -1678,8 +1678,8 @@ function generateScripts(testTypes: string[]): Record<string, string> {
     "test:mochawesome": "npm run test:console -- --reporter mochawesome --reporter-options reportDir=reports,reportFilename=mochawesome-report,html=true,json=true,overwrite=true,charts=true,code=true",
     "test:watch": "npm run test:console -- --watch",
     "test:coverage": "nyc npm run test:console",
-    "reports:clean": "rimraf reports",
-    "reports:open": "open reports/restified-html-report.html || start reports/restified-html-report.html",
+    "reports:clean": "node -e \"const dotenv=require('dotenv'); dotenv.config(); const dir=process.env.REPORT_OUTPUT_DIR||'reports'; const {exec}=require('child_process'); exec('rimraf '+dir+' mochawesome-report test-reports allure-results output test-output');\"",
+    "reports:open": "node -e \"const dotenv=require('dotenv'); dotenv.config(); const dir=process.env.REPORT_OUTPUT_DIR||'reports'; const file=process.env.REPORT_FILENAME||'restified-html-report.html'; const {exec}=require('child_process'); exec('open '+dir+'/'+file+' || start '+dir+'/'+file, (err) => {if(err) console.log('Could not open report automatically. Check: '+dir+'/'+file);});\"",
     "reports:mochawesome": "open reports/mochawesome-report.html || start reports/mochawesome-report.html"
   };
 

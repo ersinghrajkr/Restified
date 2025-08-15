@@ -291,7 +291,9 @@ after(async function() {
   console.log('\n✅ === GLOBAL TEARDOWN COMPLETE ===');
   
   if (isReportingEnabled) {
-    console.log('📊 View your test report: reports/test-report.html');
+    const reportDir = process.env.REPORT_OUTPUT_DIR || 'reports';
+    const reportFile = process.env.REPORT_FILENAME || 'test-report.html';
+    console.log(`📊 View your test report: ${reportDir}/${reportFile}`);
   } else {
     console.log('💡 Want a detailed HTML report? Run: npm run report');
   }

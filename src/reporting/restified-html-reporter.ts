@@ -38,10 +38,28 @@ export class RestifiedHtmlReporter {
 
   static configure(config: any): void {
     this.reportConfig = config || {};
+    
+    // Load environment variables from .env.enterprise if not already loaded
+    try {
+      require('dotenv').config({ path: '.env.enterprise' });
+    } catch (error) {
+      // Ignore if dotenv is not available
+    }
+    
+    // Merge config with environment variables (env vars take precedence)
+    const finalConfig = {
+      title: process.env.REPORT_TITLE || this.reportConfig.title || 'Restified Test Report',
+      subtitle: process.env.REPORT_SUBTITLE || this.reportConfig.subtitle || '',
+      filename: process.env.REPORT_FILENAME || this.reportConfig.filename || 'restified-html-report.html',
+      outputDir: process.env.REPORT_OUTPUT_DIR || this.reportConfig.outputDir || 'reports'
+    };
+    
+    this.reportConfig = finalConfig;
+    
     // Update current suite info if already initialized
     if (this.suiteInfo) {
-      this.suiteInfo.title = this.reportConfig.title || 'Restified Test Report';
-      this.suiteInfo.subtitle = this.reportConfig.subtitle || '';
+      this.suiteInfo.title = finalConfig.title;
+      this.suiteInfo.subtitle = finalConfig.subtitle;
     }
   }
 
@@ -50,9 +68,10 @@ export class RestifiedHtmlReporter {
   }
 
   static generateReport(outputPath?: string): void {
-    // Use configured filename if not provided
-    const defaultPath = this.reportConfig.filename || 'restified-html-report.html';
-    const finalPath = outputPath || `reports/${defaultPath}`;
+    // Use configured filename and output directory if not provided
+    const defaultFilename = this.reportConfig.filename || 'restified-html-report.html';
+    const defaultOutputDir = this.reportConfig.outputDir || process.env.REPORT_OUTPUT_DIR || 'reports';
+    const finalPath = outputPath || `${defaultOutputDir}/${defaultFilename}`;
     console.log(`🚀 Generating Restified HTML Report for ${this.testResults.length} tests...`);
     
     this.suiteInfo.endTime = new Date();
@@ -82,6 +101,7 @@ export class RestifiedHtmlReporter {
     const dir = path.dirname(finalPath);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
+      console.log(`📁 Created report directory: ${dir}`);
     }
     
     fs.writeFileSync(finalPath, htmlContent, 'utf8');
@@ -91,11 +111,11 @@ export class RestifiedHtmlReporter {
 
   private static generateTestItemStatic(test: any, index: number): string {
     const statusIcon = test.status === 'passed' ? '✅' : test.status === 'failed' ? '❌' : '⏳';
-    const method = test.request?.method || 'N/A';
+    const method = test.isHook ? 'HOOK' : (test.request?.method || 'N/A');
     const duration = test.duration ? `${test.duration}ms` : 'N/A';
 
     return `
-        <div class="test-item" data-test="${index}" data-status="${test.status}">
+        <div class="test-item ${test.isHook ? 'hook-item' : ''}" data-test="${index}" data-status="${test.status}">
             <div class="test-header">
                 <div class="test-title">${this.escapeHtml(test.title)}</div>
                 <div class="test-status ${test.status}">${statusIcon} ${test.status.toUpperCase()}</div>
@@ -103,6 +123,15 @@ export class RestifiedHtmlReporter {
             <div class="test-meta">${method} • ${duration}</div>
             
             <div class="test-details">
+                ${test.isHook ? `
+                <div class="detail-section">
+                    <h4 onclick="toggleDetail(this); event.stopPropagation();">🔧 Hook Details</h4>
+                    <div class="detail-content">
+                        <div class="json-view">Hook Type: Setup/Teardown\nDuration: ${test.duration}ms\nStatus: ${test.status}</div>
+                    </div>
+                </div>
+                ` : ''}
+                
                 ${test.request ? `
                 <div class="detail-section">
                     <h4 onclick="toggleDetail(this); event.stopPropagation();">📤 Request</h4>
@@ -194,9 +223,10 @@ export class RestifiedHtmlReporter {
             suiteName = parts[0].trim();
           } else {
             // Pattern 3: Check for hooks (before, after, beforeEach, afterEach)
-            if (test.title.includes('"before') || test.title.includes('"after') || 
-                test.title.includes('beforeEach') || test.title.includes('afterEach')) {
-              suiteName = 'Test Hooks';
+            if (test.isHook || test.title.includes('"before') || test.title.includes('"after') || 
+                test.title.includes('beforeEach') || test.title.includes('afterEach') || 
+                test.title.includes('🔧')) {
+              suiteName = 'Setup & Teardown Hooks';
             } else {
               // Pattern 4: Try to extract meaningful suite name from longer titles
               const words = test.title.split(' ');
@@ -307,6 +337,8 @@ export class RestifiedHtmlReporter {
         .test-item:hover { background: #f7fafc; }
         .test-item:last-child { border-bottom: none; }
         .test-item.hidden { display: none; }
+        .test-item.hook-item { border-left: 4px solid #667eea; background: #f8f9ff; }
+        .test-item.hook-item .test-title { font-style: italic; color: #667eea; }
         .test-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; cursor: pointer; padding: 6px; border-radius: 8px; transition: background-color 0.2s; }
         .test-header:hover { background: rgba(102, 126, 234, 0.1); }
         .test-title { font-weight: bold; font-size: 1.1em; }
@@ -603,11 +635,11 @@ export class RestifiedHtmlReporter {
         
         function createTestHTML(test, index) {
             const statusIcon = test.status === 'passed' ? '✅' : test.status === 'failed' ? '❌' : '⏳';
-            const method = test.request?.method || 'N/A';
+            const method = test.isHook ? 'HOOK' : (test.request?.method || 'N/A');
             const duration = test.duration ? test.duration + 'ms' : 'N/A';
             
             return \`
-                <div class="test-item" data-test="\${index}" data-status="\${test.status}">
+                <div class="test-item \${test.isHook ? 'hook-item' : ''}" data-test="\${index}" data-status="\${test.status}">
                     <div class="test-header">
                         <div class="test-title">\${escapeHtml(test.title)}</div>
                         <div class="test-status \${test.status}">\${statusIcon} \${test.status.toUpperCase()}</div>
@@ -615,6 +647,15 @@ export class RestifiedHtmlReporter {
                     <div class="test-meta">\${method} • \${duration}</div>
                     
                     <div class="test-details">
+                        \${test.isHook ? \`
+                        <div class="detail-section">
+                            <h4 onclick="toggleDetail(this); event.stopPropagation();">🔧 Hook Details</h4>
+                            <div class="detail-content">
+                                <div class="json-view">Hook Type: Setup/Teardown\\nDuration: \${test.duration}ms\\nStatus: \${test.status}</div>
+                            </div>
+                        </div>
+                        \` : ''}
+                        
                         \${test.request ? \`
                         <div class="detail-section">
                             <h4 onclick="toggleDetail(this); event.stopPropagation();">📤 Request</h4>

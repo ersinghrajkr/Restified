@@ -25,8 +25,8 @@
     "examples": "npm run test:examples && npm run report:restified",
     "report": "mocha --config .mocharc.json",
     "report:allure": "mocha -r ts-node/register --reporter allure-mocha 'examples/**/*.ts' && echo \"📊 Allure report generated. Run 'allure serve allure-results' to view\"",
-    "report:restified": "mocha -r ts-node/register 'examples/**/*.ts' --reporter ./src/reporting/restified-html-reporter.js && echo \"📊 Restified HTML report available at: reports/restified-html-report.html\"",
-    "reports:clean": "rimraf reports mochawesome-report test-reports allure-results",
+    "report:restified": "mocha -r ts-node/register 'examples/**/*.ts' --reporter ./src/reporting/restified-html-reporter.js && echo \"📊 Restified HTML report generated. Check console output for location.\"",
+    "reports:clean": "rimraf reports mochawesome-report test-reports allure-results output test-output",
     "docs:serve": "echo \"📚 Documentation available at:\" && echo \"  📖 Main README: README.md\" && echo \"  📚 Documentation Hub: docs/README.md\" && echo \"  🏢 Enterprise Features: docs/ENTERPRISE-FEATURES.md\"",
     "docs:validate": "echo \"✅ Validating documentation links...\" && node -e \"console.log('📝 All documentation files organized and accessible')\"",
     "prepublishOnly": "npm run clean && npm run build"
