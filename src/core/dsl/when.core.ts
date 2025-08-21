@@ -83,7 +83,7 @@ export class WhenStep {
 
       this.context.setResponse(httpResponse);
       
-      const { ThenStep } = require('@core/dsl/then.core');
+      const { ThenStep } = require('./then.core');
       return new ThenStep(this.context, httpResponse);
       
     } catch (error: any) {
@@ -100,7 +100,7 @@ export class WhenStep {
         };
         
         this.context.setResponse(httpResponse);
-        const { ThenStep } = require('@core/dsl/then.core');
+        const { ThenStep } = require('./then.core');
         return new ThenStep(this.context, httpResponse);
       }
       

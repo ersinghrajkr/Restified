@@ -9,19 +9,20 @@ import * as fs from 'fs';
 import * as path from 'path';
 import chalk from 'chalk';
 
-export const createTestCommand = new Command('create-test')
-  .description('Create comprehensive test suite with configuration and examples')
+export const scaffoldCommand = new Command('scaffold')
+  .description('Scaffold comprehensive test suite with configuration and examples')
   .option('-n, --name <name>', 'Test suite name', 'MyAPI')
   .option('-t, --types <types>', 'Test types (api,auth,database,performance,security,graphql,websocket)', 'api,auth')
   .option('-u, --url <url>', 'Base API URL', 'https://jsonplaceholder.typicode.com')
-  .option('-o, --output <dir>', 'Output directory', './tests')
+  .option('-o, --output <dir>', 'Output directory (defaults to project name)')
   .option('-f, --force', 'Overwrite existing files')
   .action(async (options) => {
-    console.log(chalk.cyan('\n🚀 === RestifiedTS Test Suite Generator ===\n'));
+    console.log(chalk.cyan('\n🚀 === RestifiedTS Test Suite Scaffolder ===\n'));
 
     try {
       const testTypes = options.types.split(',').map((t: string) => t.trim());
-      const outputDir = path.resolve(options.output);
+      // Use the name as the output directory if no specific output is provided
+      const outputDir = path.resolve(options.output || `./${options.name}`);
       
       // Create directory structure
       await createDirectoryStructure(outputDir, options.force);
@@ -40,11 +41,12 @@ export const createTestCommand = new Command('create-test')
       // Generate setup files
       await generateGlobalSetup(outputDir, options);
       await generatePackageScripts(outputDir, options);
-      await generateEnvironmentTemplate(outputDir);
+      await generateEnvironmentTemplate(outputDir, options);
       await generateTypeScriptConfig(outputDir);
+      await generateMochaReporterWrapper(outputDir);
       await generateReadme(outputDir, options);
       
-      console.log(chalk.green('\n✅ Test suite created successfully!'));
+      console.log(chalk.green('\n✅ Test suite scaffolded successfully!'));
       console.log(chalk.white('\n📁 Created files:'));
       console.log(chalk.gray(`   📁 ${outputDir}/`));
       console.log(chalk.gray('   ├── 📄 restified.config.ts'));
@@ -70,7 +72,7 @@ export const createTestCommand = new Command('create-test')
       console.log(chalk.cyan('   4. npm test'));
       
     } catch (error: any) {
-      console.log(chalk.red('\n❌ Error creating test suite:'), error.message);
+      console.log(chalk.red('\n❌ Error scaffolding test suite:'), error.message);
       process.exit(1);
     }
   });
@@ -246,14 +248,9 @@ const config: RestifiedConfig = {
     openAfterGeneration: process.env.OPEN_REPORT === 'true',
     includeRequestResponse: process.env.INCLUDE_REQUEST_RESPONSE !== 'false',
     includeScreenshots: process.env.INCLUDE_SCREENSHOTS !== 'false',
-    htmlReporter: {
-      title: '${options.name} API Test Report',
-      enableSuiteGrouping: true,
-      enableCollapsibleTests: true,
-      enableRequestResponseDetails: true,
-      maxPayloadSize: parseInt(process.env.MAX_PAYLOAD_SIZE || '10000'),
-      theme: process.env.REPORT_THEME || 'default'
-    }
+    title: '${options.name} API Test Report',
+    filename: process.env.REPORT_FILENAME || 'restified-html-report.html',
+    subtitle: process.env.REPORT_SUBTITLE || 'Enterprise API Testing'
   },
 
   // 🏥 Enterprise Health Checks
@@ -272,7 +269,7 @@ const config: RestifiedConfig = {
   graphql: {
     clients: {
       main: {
-        endpoint: process.env.GRAPHQL_ENDPOINT || '${options.baseURL || 'https://api.example.com'}/graphql',
+        endpoint: process.env.GRAPHQL_ENDPOINT || '${options.url}/graphql',
         headers: {
           'Authorization': 'Bearer {{globalAuthToken}}',
           'Content-Type': 'application/json',
@@ -441,7 +438,7 @@ const config: RestifiedConfig = {
   },
 
   // 🔧 Variable Resolution Configuration
-  variables: {
+  variableResolvers: {
     resolvers: {
       faker: {
         enabled: process.env.FAKER_ENABLED !== 'false',
@@ -508,7 +505,7 @@ import { expect } from 'chai';
 describe('${options.name} API Tests', function() {
   this.timeout(30000);
 
-  afterAll(async function() {
+  after(async function() {
     await restified.cleanup();
   });
 
@@ -523,7 +520,7 @@ describe('${options.name} API Tests', function() {
 
       await response
         .statusCode(200)
-        .header('Content-Type', /application\\/json/)
+        .header('Content-Type', 'application/json')
         .jsonPath('$.id', 1)
         .jsonPath('$.name', (name) => typeof name === 'string')
         .jsonPath('$.email', (email) => email.includes('@'))
@@ -542,8 +539,7 @@ describe('${options.name} API Tests', function() {
           .useClient('api')
           .variable('userData', userData)
         .when()
-          .post('/users')
-          .json('{{userData}}')
+          .post('/users', '{{userData}}')
           .execute();
 
       await response
@@ -563,8 +559,7 @@ describe('${options.name} API Tests', function() {
         .given()
           .useClient('api')
         .when()
-          .put('/users/1')
-          .json(updateData)
+          .put('/users/1', updateData)
           .execute();
 
       await response
@@ -639,7 +634,7 @@ import { expect } from 'chai';
 describe('${options.name} Authentication Tests', function() {
   this.timeout(30000);
 
-  afterAll(async function() {
+  after(async function() {
     await restified.cleanup();
   });
 
@@ -709,7 +704,7 @@ describe('${options.name} Authentication Tests', function() {
 
       // Admin should have access
       await adminResponse
-        .statusCode((status) => [200, 404].includes(status))  // 404 is ok for mock API
+        .statusCodeIn([200, 404])  // 404 is ok for mock API
         .execute();
     });
 
@@ -804,7 +799,7 @@ describe('${options.name} Database Tests', function() {
     }
   });
 
-  afterAll(async function() {
+  after(async function() {
     await restified.cleanup();
   });
 
@@ -1082,8 +1077,7 @@ describe('${options.name} Database Tests', function() {
         .given()
           .useClient('api')
         .when()
-          .post('/users')
-          .json({
+          .post('/users', {
             name: 'Database Integration Test',
             email: 'integration@example.com'
           })
@@ -1127,7 +1121,7 @@ import { restified } from 'restifiedts';
 describe('${options.name} Performance Tests', function() {
   this.timeout(60000);
 
-  afterAll(async function() {
+  after(async function() {
     await restified.cleanup();
   });
 
@@ -1192,7 +1186,7 @@ import { restified } from 'restifiedts';
 describe('${options.name} Security Tests', function() {
   this.timeout(30000);
 
-  afterAll(async function() {
+  after(async function() {
     await restified.cleanup();
   });
 
@@ -1223,7 +1217,7 @@ describe('${options.name} Security Tests', function() {
 
       // In real API, this should be 401/403
       await response
-        .statusCode((status) => [200, 401, 403, 404].includes(status))
+        .statusCodeIn([200, 401, 403, 404])
         .execute();
     });
 
@@ -1237,13 +1231,12 @@ describe('${options.name} Security Tests', function() {
         .given()
           .useClient('api')
         .when()
-          .post('/users')
-          .json(maliciousPayload)
+          .post('/users', maliciousPayload)
           .execute();
 
       // Should either reject (400) or sanitize the input
       await response
-        .statusCode((status) => [201, 400, 422].includes(status))
+        .statusCodeIn([201, 400, 422])
         .execute();
     });
 
@@ -1256,7 +1249,7 @@ describe('${options.name} Security Tests', function() {
           .execute();
 
       await response
-        .statusCode((status) => [200, 400, 404].includes(status))
+        .statusCodeIn([200, 400, 404])
         .execute();
     });
   });
@@ -1280,7 +1273,7 @@ describe('${options.name} GraphQL Tests', function() {
   before(async function() {
     // Create GraphQL client
     restified.createGraphQLClient('graphql', {
-      endpoint: '${options.baseURL || 'https://api.example.com'}/graphql',
+      endpoint: '${options.url}/graphql',
       headers: {
         'Authorization': 'Bearer {{globalAuthToken}}',
         'Content-Type': 'application/json'
@@ -1289,7 +1282,7 @@ describe('${options.name} GraphQL Tests', function() {
     });
   });
 
-  afterAll(async function() {
+  after(async function() {
     await restified.cleanup();
   });
 
@@ -1388,14 +1381,14 @@ describe('${options.name} WebSocket Tests', function() {
   before(async function() {
     // Create WebSocket client
     restified.createWebSocketClient('ws', {
-      url: '${options.baseURL ? options.baseURL.replace('http', 'ws') : 'wss://echo.websocket.org'}',
+      url: '${options.url.replace('http', 'ws')}/ws',
       timeout: 10000,
       reconnectAttempts: 3,
       reconnectDelay: 1000
     });
   });
 
-  afterAll(async function() {
+  after(async function() {
     await restified.cleanup();
   });
 
@@ -1493,6 +1486,7 @@ async function generateGlobalSetup(outputDir: string, options: any): Promise<voi
  * Enterprise-grade global setup with automatic configuration loading
  */
 
+import 'dotenv/config';
 import { restified } from 'restifiedts';
 import { ConfigLoader } from '../config/ConfigLoader';
 import { RestifiedConfig } from 'restifiedts';
@@ -1594,7 +1588,8 @@ async function generatePackageScripts(outputDir: string, options: any): Promise<
     "mocha": "^10.0.0",
     "mochawesome": "^7.1.0",
     "nyc": "^15.1.0",
-    "restifiedts": "^1.0.0",
+    "restifiedts": "^2.0.1",
+    "dotenv": "^16.0.0",
     "rimraf": "^3.0.2",
     "ts-node": "^10.9.0",
     "tsconfig-paths": "^4.2.0",
@@ -1673,7 +1668,8 @@ async function generatePackageScripts(outputDir: string, options: any): Promise<
 
 function generateScripts(testTypes: string[]): Record<string, string> {
   const baseScripts = {
-    "test": "mocha -r ts-node/register -r tsconfig-paths/register 'setup/global-setup.ts' 'tests/**/*.ts' --reporter ./node_modules/restifiedts/dist/reporting/restified-html-reporter.js",
+    "test": "mocha -r ts-node/register -r tsconfig-paths/register 'setup/global-setup.ts' 'tests/**/*.ts' --reporter ./mocha-reporter-wrapper.js",
+    "test:spec": "mocha -r ts-node/register -r tsconfig-paths/register 'setup/global-setup.ts' 'tests/**/*.ts' --reporter spec",
     "test:console": "mocha -r ts-node/register -r tsconfig-paths/register 'setup/global-setup.ts' 'tests/**/*.ts'",
     "test:mochawesome": "npm run test:console -- --reporter mochawesome --reporter-options reportDir=reports,reportFilename=mochawesome-report,html=true,json=true,overwrite=true,charts=true,code=true",
     "test:watch": "npm run test:console -- --watch",
@@ -1803,8 +1799,8 @@ function generateInstallationInstructions(outputDir: string, testTypes: string[]
   fs.writeFileSync(path.join(outputDir, 'INSTALLATION.md'), instructions.join('\n'));
 }
 
-async function generateEnvironmentTemplate(outputDir: string): Promise<void> {
-  const envContent = `# ${outputDir} Environment Configuration
+async function generateEnvironmentTemplate(outputDir: string, options: any): Promise<void> {
+  const envContent = `# ${options.name} Environment Configuration
 # Copy this file to .env and customize for your environment
 
 # =============================================================================
@@ -1819,11 +1815,17 @@ TENANT_ID=default-tenant
 # =============================================================================
 # 🏗️ SERVICE ENDPOINTS
 # =============================================================================
-API_GATEWAY_URL=https://jsonplaceholder.typicode.com
-AUTH_SERVICE_URL=https://jsonplaceholder.typicode.com
-USER_SERVICE_URL=https://jsonplaceholder.typicode.com
-ORDER_SERVICE_URL=https://jsonplaceholder.typicode.com
+API_GATEWAY_URL=${options.url}
+AUTH_SERVICE_URL=${options.url}
+USER_SERVICE_URL=${options.url}
+ORDER_SERVICE_URL=${options.url}
 TEST_UTILS_URL=https://httpbin.org
+
+# API Configuration
+API_VERSION=v1
+API_TIMEOUT=10000
+AUTH_TIMEOUT=5000
+CLIENT_ID=test-suite-client
 
 # =============================================================================
 # 🔐 AUTHENTICATION & SECURITY
@@ -1844,11 +1846,16 @@ FALLBACK_TOKEN=fallback-token-123
 FALLBACK_EMAIL=test@example.com
 FALLBACK_USER_ID=1
 
+# Authentication Application
+AUTH_APPLY_TO_CLIENTS=all
+AUTH_HEADER_NAME=Authorization
+SSO_PROVIDER=internal
+
 # =============================================================================
 # 🔗 GRAPHQL CONFIGURATION
 # =============================================================================
-GRAPHQL_ENDPOINT=https://api.example.com/graphql
-GRAPHQL_WS_ENDPOINT=wss://api.example.com/graphql
+GRAPHQL_ENDPOINT=${options.url}/graphql
+GRAPHQL_WS_ENDPOINT=${options.url.replace('http', 'ws')}/graphql
 GRAPHQL_TIMEOUT=15000
 GRAPHQL_INTROSPECTION=true
 GRAPHQL_DEBUG=false
@@ -1860,7 +1867,7 @@ GRAPHQL_API_KEY=your-graphql-api-key
 # =============================================================================
 # ⚡ WEBSOCKET CONFIGURATION
 # =============================================================================
-WEBSOCKET_URL=wss://api.example.com/ws
+WEBSOCKET_URL=${options.url.replace('http', 'ws')}/ws
 WEBSOCKET_TIMEOUT=10000
 WEBSOCKET_RECONNECT_ATTEMPTS=3
 WEBSOCKET_RECONNECT_INTERVAL=5000
@@ -1879,8 +1886,10 @@ WEBSOCKET_PROTOCOL=your-protocol
 # PostgreSQL Configuration
 POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
+POSTGRES_USER=testuser
 POSTGRES_USERNAME=testuser
 POSTGRES_PASSWORD=testpass
+POSTGRES_DB=testdb
 POSTGRES_DATABASE=testdb
 POSTGRES_SCHEMA=public
 POSTGRES_SSL=false
@@ -1889,13 +1898,18 @@ POSTGRES_POOL_MAX=10
 POSTGRES_TIMEOUT=30000
 
 # MongoDB Configuration  
-MONGODB_CONNECTION_STRING=mongodb://localhost:27017/testdb
+MONGODB_HOST=localhost
+MONGODB_PORT=27017
+MONGODB_USER=testuser
+MONGODB_PASSWORD=testpass
+MONGODB_DB=testdb
 MONGODB_DATABASE=testdb
+MONGODB_CONNECTION_STRING=mongodb://localhost:27017/testdb
 MONGODB_AUTH_SOURCE=admin
 MONGODB_REPLICA_SET=rs0
 MONGODB_SSL=false
 MONGODB_TIMEOUT=30000
-MONGODB_POOL_SIZE=10
+MONGODB_MAX_POOL_SIZE=10
 
 # MySQL Configuration
 MYSQL_HOST=localhost
@@ -1904,7 +1918,12 @@ MYSQL_USERNAME=testuser
 MYSQL_PASSWORD=testpass
 MYSQL_DATABASE=testdb
 MYSQL_SSL=false
-MYSQL_TIMEOUT=30000
+MYSQL_CHARSET=utf8mb4
+MYSQL_TIMEZONE=UTC
+MYSQL_RECONNECT=true
+MYSQL_POOL_MIN=1
+MYSQL_POOL_MAX=10
+MYSQL_TIMEOUT=60000
 
 # SQLite Configuration
 SQLITE_FILENAME=:memory:
@@ -1956,15 +1975,21 @@ DB_MIGRATION_PATH=./test-data/migrations
 # =============================================================================
 # 📄 JSON FIXTURES & VARIABLE RESOLUTION
 # =============================================================================
-FIXTURES_DIRECTORY=fixtures
-FIXTURES_ENCODING=utf8
-ENABLE_DEEP_VARIABLE_RESOLUTION=true
-VARIABLE_CACHE_ENABLED=true
-VARIABLE_CACHE_TTL=3600
+FIXTURES_DIR=fixtures
+FIXTURES_AUTO_RESOLVE=true
+FIXTURES_VARIABLE_PREFIX={{
+FIXTURES_VARIABLE_SUFFIX=}}
+FAKER_LOCALE=en
+ENABLE_FAKER_FUNCTIONS=true
 
-# Default Language for i18n
-DEFAULT_LANGUAGE=en
-TIMEZONE=UTC
+# Utility Function Toggles
+FAKER_ENABLED=true
+RANDOM_ENABLED=true
+DATE_FUNCTIONS_ENABLED=true
+UTIL_FUNCTIONS_ENABLED=true
+BASE64_ENCODING=utf8
+DEFAULT_TIMEZONE=UTC
+RANDOM_SEED=12345
 
 # =============================================================================
 # 📊 TESTING CONFIGURATION
@@ -1974,6 +1999,11 @@ DEFAULT_TIMEOUT=10000
 MAX_RETRIES=3
 ENABLE_LOGGING=true
 LOG_LEVEL=info
+
+# Enterprise Configuration
+ORGANIZATION=enterprise-corp
+COMPLIANCE_MODE=strict
+SECURITY_LEVEL=enterprise
 
 # Feature Flags
 RUN_INTEGRATION_TESTS=true
@@ -2012,15 +2042,15 @@ REPORTING_ENABLED=true
 REPORT_OUTPUT_DIR=reports
 REPORT_FORMATS=html,json,junit
 INCLUDE_REQUEST_RESPONSE=true
+INCLUDE_SCREENSHOTS=true
 INCLUDE_METRICS=true
 INCLUDE_COMPLIANCE=false
 OPEN_REPORT=false
 
 # Restified HTML Reporter Settings
-MAX_PAYLOAD_SIZE=10000
-REPORT_THEME=default
+REPORT_FILENAME=restified-html-report.html
 REPORT_TITLE=API Test Report
-REPORT_COMPANY=Your Company
+REPORT_SUBTITLE=Enterprise API Testing
 
 # Export Settings
 EXCEL_EXPORT_ENABLED=false
@@ -2065,7 +2095,12 @@ async function generateTypeScriptConfig(outputDir: string): Promise<void> {
       "moduleResolution": "node",
       "esModuleInterop": true,
       "allowSyntheticDefaultImports": true,
-      "strict": true,
+      "strict": false,
+      "noImplicitAny": false,
+      "noImplicitReturns": false,
+      "noImplicitThis": false,
+      "noUnusedLocals": false,
+      "noUnusedParameters": false,
       "declaration": false,
       "sourceMap": true,
       "outDir": "./dist",
@@ -2081,7 +2116,10 @@ async function generateTypeScriptConfig(outputDir: string): Promise<void> {
         "@setup/*": ["setup/*"],
         "@config/*": ["config/*"]
       },
-      "types": ["node", "mocha", "chai"]
+      "types": ["node", "mocha", "chai"],
+      "typeRoots": [
+        "./node_modules/@types"
+      ]
     },
     "include": [
       "**/*.ts",
@@ -2092,7 +2130,11 @@ async function generateTypeScriptConfig(outputDir: string): Promise<void> {
       "node_modules",
       "dist",
       "reports"
-    ]
+    ],
+    "ts-node": {
+      "esm": false,
+      "experimentalSpecifierResolution": "node"
+    }
   };
 
   fs.writeFileSync(path.join(outputDir, 'tsconfig.json'), JSON.stringify(tsConfigContent, null, 2));
@@ -2175,7 +2217,7 @@ import { restified } from 'restifiedts';
 describe('My New Tests', function() {
   this.timeout(30000);
 
-  afterAll(async function() {
+  after(async function() {
     await restified.cleanup();
   });
 
@@ -2490,18 +2532,21 @@ async function generateConfigLoader(outputDir: string): Promise<void> {
   const configLoaderContent = `/**
  * Configuration Loader
  * 
- * Enterprise configuration loading with environment support
+ * Loads and validates the restified.config.ts file with smart defaults
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { RestifiedConfig } from 'restifiedts';
+import { RestifiedConfig, EnvironmentConfig, AuthenticationConfig, ReportingConfig } from 'restifiedts';
 
 export class ConfigLoader {
   private static instance: ConfigLoader;
   private config: RestifiedConfig | null = null;
+  private configPath: string;
 
-  private constructor() {}
+  private constructor() {
+    this.configPath = this.findConfigFile();
+  }
 
   public static getInstance(): ConfigLoader {
     if (!ConfigLoader.instance) {
@@ -2515,24 +2560,73 @@ export class ConfigLoader {
       return this.config;
     }
 
-    // Try to load from restified.config.ts
-    const configPath = path.resolve(process.cwd(), 'restified.config.ts');
-    
-    if (fs.existsSync(configPath)) {
-      console.log(\`📋 Loading configuration from: \${path.relative(process.cwd(), configPath)}\`);
-      
-      // Use require to load the TypeScript config
-      delete require.cache[require.resolve(configPath)];
-      const configModule = require(configPath);
-      this.config = configModule.default || configModule;
-      
-      return this.config;
+    let userConfig: Partial<RestifiedConfig> = {};
+
+    // Try to load user configuration
+    try {
+      if (this.configPath && fs.existsSync(this.configPath)) {
+        console.log(\`📋 Loading configuration from: \${path.relative(process.cwd(), this.configPath)}\`);
+        
+        // Dynamic import for TypeScript config files
+        const configModule = await import(this.configPath);
+        userConfig = configModule.default || configModule;
+      } else {
+        console.log('📋 No config file found, using defaults');
+      }
+    } catch (error) {
+      console.log(\`⚠️  Warning: Could not load config file: \${error.message}\`);
+      console.log('📋 Using default configuration');
     }
 
-    // Fallback to default configuration
-    console.log('📋 Using default configuration');
-    this.config = this.getDefaultConfig();
+    // Merge with defaults
+    this.config = this.mergeWithDefaults(userConfig);
     return this.config;
+  }
+
+  /**
+   * Find config file in project root
+   */
+  private findConfigFile(): string {
+    const possiblePaths = [
+      path.join(process.cwd(), 'restified.config.ts'),
+      path.join(process.cwd(), 'restified.config.js'),
+      path.join(process.cwd(), 'restified.config.json')
+    ];
+
+    for (const configPath of possiblePaths) {
+      if (fs.existsSync(configPath)) {
+        return configPath;
+      }
+    }
+
+    return possiblePaths[0]; // Default to .ts file path
+  }
+
+  /**
+   * Merge user config with smart defaults
+   */
+  private mergeWithDefaults(userConfig: Partial<RestifiedConfig>): RestifiedConfig {
+    const defaultConfig = this.getDefaultConfig();
+    
+    // Deep merge user config with defaults
+    return this.deepMerge(defaultConfig, userConfig) as RestifiedConfig;
+  }
+
+  /**
+   * Deep merge two objects
+   */
+  private deepMerge(target: any, source: any): any {
+    const result = { ...target };
+
+    for (const key in source) {
+      if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+        result[key] = this.deepMerge(target[key] || {}, source[key]);
+      } else {
+        result[key] = source[key];
+      }
+    }
+
+    return result;
   }
 
   private getDefaultConfig(): RestifiedConfig {
@@ -2560,7 +2654,10 @@ export class ConfigLoader {
       reporting: {
         enabled: true,
         outputDir: 'reports',
-        formats: ['html', 'json']
+        formats: ['html', 'json'],
+        openAfterGeneration: false,
+        includeRequestResponse: true,
+        includeScreenshots: false
       }
     };
   }
@@ -2568,4 +2665,23 @@ export class ConfigLoader {
 `;
 
   fs.writeFileSync(path.join(outputDir, 'config', 'ConfigLoader.ts'), configLoaderContent);
+}
+
+async function generateMochaReporterWrapper(outputDir: string): Promise<void> {
+  const wrapperContent = `/**
+ * Mocha Reporter Wrapper for RestifiedHtmlReporter
+ * 
+ * This wrapper properly exports the RestifiedHtmlReporter for Mocha compatibility
+ */
+
+try {
+  const { RestifiedHtmlReporter } = require('restifiedts');
+  module.exports = RestifiedHtmlReporter;
+} catch (error) {
+  console.warn('⚠️  RestifiedHtmlReporter not available, falling back to spec reporter');
+  console.warn('   Run "npm run test:spec" to use console output instead');
+  module.exports = require('mocha/lib/reporters/spec');
+}`;
+
+  fs.writeFileSync(path.join(outputDir, 'mocha-reporter-wrapper.js'), wrapperContent);
 }

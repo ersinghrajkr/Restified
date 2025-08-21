@@ -6,7 +6,31 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-export class RestifiedHtmlReporter {
+// Interface for the reporter function with static methods
+interface RestifiedHtmlReporterFunction {
+  (runner: any, options?: any): void;
+  configure: (config: any) => void;
+  reset: () => void;
+  generateReport: (outputPath?: string) => void;
+  addTestResult: (testResult: any) => void;
+  getTestResults: () => any[];
+}
+
+// Mocha Reporter Function - this is what Mocha expects
+const RestifiedHtmlReporter = function(runner: any, options?: any) {
+  // Initialize the internal static reporter
+  RestifiedHtmlReporterImpl.initialize(runner, options);
+} as RestifiedHtmlReporterFunction;
+
+// Add static methods to the function for backwards compatibility
+RestifiedHtmlReporter.configure = (config: any) => RestifiedHtmlReporterImpl.configure(config);
+RestifiedHtmlReporter.reset = () => RestifiedHtmlReporterImpl.reset();
+RestifiedHtmlReporter.generateReport = (outputPath?: string) => RestifiedHtmlReporterImpl.generateReport(outputPath);
+RestifiedHtmlReporter.addTestResult = (testResult: any) => RestifiedHtmlReporterImpl.addTestResult(testResult);
+RestifiedHtmlReporter.getTestResults = () => RestifiedHtmlReporterImpl.getTestResults();
+
+// Internal implementation as a class
+class RestifiedHtmlReporterImpl {
   private static testResults: any[] = [];
   private static reportConfig: any = {};
   private static suiteInfo = {
@@ -20,6 +44,104 @@ export class RestifiedHtmlReporter {
     pending: 0,
     total: 0
   };
+
+  static initialize(runner: any, options?: any) {
+    this.reset();
+    
+    const opts = (options && options.reporterOptions) || {};
+    this.configure(opts);
+
+    // Listen to Mocha events
+    runner.on('start', () => {
+      this.suiteInfo.startTime = new Date();
+      console.log('🚀 Starting Restified test execution...');
+    });
+
+    runner.on('test', (test: any) => {
+      // Store test context
+      const currentTest = global.__RESTIFIED_TEST_CONTEXT__;
+      if (currentTest) {
+        test._restifiedContext = currentTest;
+      }
+    });
+
+    runner.on('pass', (test: any) => {
+      this.suiteInfo.passed++;
+      const testResult = this.createTestResult(test, 'passed');
+      this.testResults.push(testResult);
+    });
+
+    runner.on('fail', (test: any) => {
+      this.suiteInfo.failed++;
+      const testResult = this.createTestResult(test, 'failed', test.err);
+      this.testResults.push(testResult);
+    });
+
+    runner.on('pending', (test: any) => {
+      this.suiteInfo.pending++;
+      const testResult = this.createTestResult(test, 'pending');
+      this.testResults.push(testResult);
+    });
+
+    runner.on('end', () => {
+      this.suiteInfo.endTime = new Date();
+      this.suiteInfo.duration = this.suiteInfo.endTime.getTime() - this.suiteInfo.startTime.getTime();
+      this.suiteInfo.total = this.testResults.length;
+
+      console.log('📊 Generating Restified HTML Report...');
+      this.generateReport();
+    });
+  }
+
+  private static createTestResult(test: any, status: string, error?: any): any {
+    const result: any = {
+      title: test.title,
+      fullTitle: test.fullTitle(),
+      status,
+      duration: test.duration,
+      isHook: test.type === 'hook',
+      hookType: test.type === 'hook' ? (test.title.includes('before') ? 'before' : 'after') : null
+    };
+
+    if (error) {
+      result.error = error.message || error.stack || error.toString();
+    }
+
+    // Get Restified-specific data from test context
+    const restifiedData = test._restifiedContext?.responseData || test.responseData;
+    if (restifiedData) {
+      result.request = restifiedData.request;
+      result.response = restifiedData.response;
+      result.assertions = restifiedData.assertions;
+    }
+
+    // Also check for globally stored response data
+    const globalResponseData = (global as any).__RESTIFIED_TEST_RESPONSE_DATA__;
+    if (globalResponseData && !result.request) {
+      result.request = globalResponseData.request;
+      result.response = globalResponseData.response;
+      result.assertions = globalResponseData.assertions;
+    }
+
+    // Also check for globally stored test context data
+    const globalContext = (global as any).__RESTIFIED_TEST_CONTEXT__;
+    if (globalContext && globalContext.responseData && !result.request) {
+      result.request = globalContext.responseData.request;
+      result.response = globalContext.responseData.response;
+      result.assertions = globalContext.responseData.assertions;
+    }
+
+    return result;
+  }
+
+  // Static methods for backward compatibility (direct test result addition)
+  static addTestResult(testResult: any): void {
+    this.testResults.push(testResult);
+  }
+
+  static getTestResults(): any[] {
+    return this.testResults;
+  }
 
   static reset(): void {
     this.testResults = [];
@@ -857,3 +979,6 @@ ${hookCode}${error}`;
 </html>`;
   }
 }
+
+// Export the function (not the class) for Mocha compatibility
+export { RestifiedHtmlReporter };

@@ -152,6 +152,67 @@ export interface RestifiedConfig {
   security?: SecurityConfig;
   databases?: Record<string, DatabaseConfigEntry>;
   databaseStateManagement?: DatabaseStateManagementConfig;
+  
+  // GraphQL Configuration
+  graphql?: {
+    clients?: Record<string, {
+      endpoint: string;
+      headers?: Record<string, string>;
+      timeout?: number;
+      retries?: number;
+      retryDelay?: number;
+    }>;
+    introspection?: {
+      enabled?: boolean;
+      cacheSchema?: boolean;
+    };
+  };
+  
+  // WebSocket Configuration
+  websocket?: {
+    clients?: Record<string, {
+      url: string;
+      protocols?: string[];
+      headers?: Record<string, string>;
+      timeout?: number;
+      reconnectAttempts?: number;
+      reconnectDelay?: number;
+      pingInterval?: number;
+      pongTimeout?: number;
+    }>;
+  };
+  
+  // Fixtures Configuration
+  fixtures?: {
+    baseDirectory?: string;
+    autoResolveVariables?: boolean;
+    variablePrefix?: string;
+    variableSuffix?: string;
+    fakerLocale?: string;
+    enableFakerFunctions?: boolean;
+  };
+  
+  // Variable Resolution Configuration
+  variableResolvers?: {
+    resolvers?: {
+      faker?: {
+        enabled?: boolean;
+        locale?: string;
+      };
+      random?: {
+        enabled?: boolean;
+        seed?: number;
+      };
+      date?: {
+        enabled?: boolean;
+        timezone?: string;
+      };
+      util?: {
+        enabled?: boolean;
+        base64Encoding?: string;
+      };
+    };
+  };
 }
 
 export interface VariableContext {

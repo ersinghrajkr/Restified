@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx mocha:*)"
+      "Bash(npx mocha:*)",
+      "Bash(cp:*)",
+      "Bash(npm install)"
     ],
     "deny": [],
     "ask": []

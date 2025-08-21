@@ -273,12 +273,19 @@ export class ThenStep {
       // Use mochawesome/addContext for proper context capture
       addContext(currentTest, testData);
       
+      // Store data for RestifiedHtmlReporter
+      if (currentTest) {
+        currentTest.responseData = testData.value;
+        // Also store globally for the HTML reporter to access
+        (global as any).__RESTIFIED_TEST_RESPONSE_DATA__ = testData.value;
+      }
+      
       // Add assertions summary if there are any
       if (this.assertions.length > 0) {
         const passedAssertions = this.assertions.filter(a => a.passed).length;
         const failedAssertions = this.assertions.filter(a => !a.passed).length;
         
-        addContext(currentTest, {
+        const assertionSummary = {
           title: '✅ Assertion Summary',
           value: {
             total: this.assertions.length,
@@ -288,7 +295,9 @@ export class ThenStep {
               this.assertions.filter(a => !a.passed).map(a => a.message) : 
               ['All assertions passed']
           }
-        });
+        };
+        
+        addContext(currentTest, assertionSummary);
       }
     } catch (error) {
       // Don't fail the test if context addition fails

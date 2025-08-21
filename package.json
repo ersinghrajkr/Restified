@@ -1,11 +1,11 @@
 {
   "name": "restifiedts",
-  "version": "2.0.0",
+  "version": "2.0.4",
   "description": "Production-grade TypeScript API testing framework with fluent DSL",
-  "main": "dist/src/index.js",
-  "types": "dist/src/index.d.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "bin": {
-    "restifiedts": "./dist/src/cli/index.js"
+    "restifiedts": "./dist/cli/index.js"
   },
   "scripts": {
     "build": "tsc",

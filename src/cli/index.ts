@@ -8,7 +8,7 @@ import { ConfigCommand } from './commands/config.command';
 import { GenerateCommand } from './commands/generate.command';
 import { reportCommand } from './commands/report';
 import { initConfigCommand } from './commands/init-config';
-import { createTestCommand } from './commands/create-test';
+import { scaffoldCommand } from './commands/scaffold';
 
 const program = new Command();
 
@@ -24,7 +24,7 @@ program.addCommand(new ConfigCommand().getCommand());
 program.addCommand(new GenerateCommand().getCommand());
 program.addCommand(reportCommand);
 program.addCommand(initConfigCommand);
-program.addCommand(createTestCommand);
+program.addCommand(scaffoldCommand);
 
 // Global error handler
 process.on('uncaughtException', (error) => {

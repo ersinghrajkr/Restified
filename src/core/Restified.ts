@@ -1,11 +1,11 @@
-import { GivenStep } from '@core/dsl/given.core';
-import { VariableStore } from '@core/stores/variable.core';
-import { ResponseStore } from '@core/stores/response.core';
-import { ConfigManager } from '@core/config/config.core';
-import { BearerAuth } from '@core/auth/bearer.auth';
-import { BasicAuth } from '@core/auth/basic.auth';
-import { ApiKeyAuth } from '@core/auth/apikey.auth';
-import { OAuth2Auth } from '@core/auth/oauth2.auth';
+import { GivenStep } from './dsl/given.core';
+import { VariableStore } from './stores/variable.core';
+import { ResponseStore } from './stores/response.core';
+import { ConfigManager } from './config/config.core';
+import { BearerAuth } from './auth/bearer.auth';
+import { BasicAuth } from './auth/basic.auth';
+import { ApiKeyAuth } from './auth/apikey.auth';
+import { OAuth2Auth } from './auth/oauth2.auth';
 import { GraphQLClient, GraphQLClientConfig } from './clients/GraphQLClient';
 import { WebSocketClient, WebSocketClientConfig } from './clients/WebSocketClient';
 import { DatabaseManager } from './database/DatabaseManager';
@@ -629,16 +629,16 @@ export class Restified {
 export const restified = Restified.create();
 
 // Re-export supporting classes and types for direct access
-export { VariableStore } from '@core/stores/variable.core';
-export { ResponseStore } from '@core/stores/response.core';
-export { ConfigManager } from '@core/config/config.core';
-export { BearerAuth } from '@core/auth/bearer.auth';
-export { BasicAuth } from '@core/auth/basic.auth';
-export { ApiKeyAuth } from '@core/auth/apikey.auth';
-export { OAuth2Auth } from '@core/auth/oauth2.auth';
-export { GivenStep } from '@core/dsl/given.core';
-export { WhenStep } from '@core/dsl/when.core';
-export { ThenStep } from '@core/dsl/then.core';
+export { VariableStore } from './stores/variable.core';
+export { ResponseStore } from './stores/response.core';
+export { ConfigManager } from './config/config.core';
+export { BearerAuth } from './auth/bearer.auth';
+export { BasicAuth } from './auth/basic.auth';
+export { ApiKeyAuth } from './auth/apikey.auth';
+export { OAuth2Auth } from './auth/oauth2.auth';
+export { GivenStep } from './dsl/given.core';
+export { WhenStep } from './dsl/when.core';
+export { ThenStep } from './dsl/then.core';
 export { GraphQLClient } from './clients/GraphQLClient';
 export { WebSocketClient } from './clients/WebSocketClient';
 export { DatabaseManager } from './database/DatabaseManager';
@@ -660,4 +660,4 @@ export type {
   GraphQLConfig
 } from '../RestifiedTypes';
 
-export type { AuthProvider, OAuth2TokenResponse } from '@core/auth/AuthTypes';
+export type { AuthProvider, OAuth2TokenResponse } from './auth/AuthTypes';

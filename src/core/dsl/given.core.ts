@@ -93,8 +93,8 @@ export class GivenStep {
     return this;
   }
 
-  when(): import('@core/dsl/when.core').WhenStep {
-    const { WhenStep } = require('@core/dsl/when.core');
+  when(): import('./when.core').WhenStep {
+    const { WhenStep } = require('./when.core');
     return new WhenStep(this.context, this.config);
   }
 

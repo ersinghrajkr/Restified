@@ -10,6 +10,31 @@
 [
 ](./docs/ENTERPRISE-FEATURES.md)
 
+## 🆕 **What's New in v2.0.2**
+
+- **🎯 Enhanced CLI**: `scaffold` command replaces `create-test` with improved naming and directory management
+- **📁 Smart Directory Creation**: Project name automatically becomes the folder name
+- **🔧 Updated ConfigLoader**: Enterprise-grade configuration management with validation and smart defaults
+- **⚙️ Comprehensive Environment Variables**: 50+ new environment variables for complete customization
+- **🏢 Enterprise Features**: Enhanced authentication, compliance modes, and security levels
+- **📊 Improved Reporting**: Updated reporter exports and better HTML report integration
+
+### 🔄 **Migration from v2.0.1**
+
+```bash
+# Old command (v2.0.1)
+restifiedts create-test -n "MyAPI" -u "https://api.example.com"
+
+# New command (v2.0.2+) 
+restifiedts scaffold -n "MyAPI" -u "https://api.example.com"
+```
+
+**Key Changes:**
+- ✅ `scaffold` command creates folder with project name (not generic "tests" folder)
+- ✅ Enhanced ConfigLoader with enterprise validation
+- ✅ 50+ new environment variables for complete customization
+- ✅ Better TypeScript integration and error handling
+
 ---
 
 ## ✨ **Why RestifiedTS?**
@@ -34,14 +59,14 @@ RestifiedTS is inspired by Java's RestAssured but built for the modern TypeScrip
 npm install -g restifiedts
 ```
 
-### Generate Enterprise Test Suite
+### Scaffold Enterprise Test Suite
 
 ```bash
-# Generate complete enterprise test suite
-restifiedts create-test -n "MyAPI" -t "api,auth,performance" -u "https://api.example.com"
+# Scaffold complete enterprise test suite (NEW in v2.0.2!)
+restifiedts scaffold -n "MyAPI" -t "api,auth,database,performance" -u "https://api.example.com"
 
 # Navigate to generated suite
-cd ./tests
+cd ./MyAPI
 
 # Install dependencies and run
 npm install
@@ -417,7 +442,7 @@ const resolved = restified.resolveVariables(template);
 Generate comprehensive test suites with:
 
 ```bash
-restifiedts create-test -t "api,auth,graphql,websocket,database,performance,security"
+restifiedts scaffold -t "api,auth,graphql,websocket,database,performance,security"
 ```
 
 - **`api`** - REST API testing with full HTTP method support
@@ -619,17 +644,49 @@ RestifiedTS follows a layered enterprise architecture:
 
 ## 🛠️ **CLI Tools**
 
-### **🚀 Enterprise Test Suite Generator**
+### **🎯 Complete CLI Commands Reference**
+
+RestifiedTS provides a comprehensive CLI for project scaffolding and management:
 
 ```bash
-# Create complete enterprise-grade test suite
-restifiedts create-test -n "MyCompanyAPI" -t "api,auth,performance,security" -u "https://api.mycompany.com"
+# 🚀 Scaffold new test project (RECOMMENDED)
+restifiedts scaffold -n "MyAPI" -t "api,auth,database" -u "https://api.example.com"
+
+# 🔧 Initialize existing project  
+restifiedts init MyProject --template enterprise
+
+# 📊 Run tests with custom options
+restifiedts test --pattern "tests/**/*.ts" --reporter spec
+
+# ⚙️ Configuration management
+restifiedts config init --force              # Initialize config file
+restifiedts config show                      # Show current config
+
+# 🔨 Generate specific components
+restifiedts generate test UserAPI            # Generate test file
+restifiedts generate config                  # Generate config
+restifiedts generate auth LoginTest          # Generate auth test
+
+# 📈 Report generation
+restifiedts report --open --clean            # Generate and open HTML report
+
+# 🔧 Initialize configuration only
+restifiedts init-config --type ts --force    # Generate restified.config.ts
+```
+
+### **🚀 Enterprise Test Suite Scaffolding**
+
+The `scaffold` command creates production-ready test suites:
+
+```bash
+# Scaffold complete enterprise-grade test suite
+restifiedts scaffold -n "MyCompanyAPI" -t "api,auth,performance,security" -u "https://api.mycompany.com"
 
 # Options:
-# -n, --name     Test suite name (default: "MyAPI")
-# -t, --types    Test types: api,auth,database,performance,security
+# -n, --name     Test suite name (default: "MyAPI") 
+# -t, --types    Test types: api,auth,database,performance,security,graphql,websocket
 # -u, --url      Base API URL 
-# -o, --output   Output directory (default: "./tests")
+# -o, --output   Output directory (defaults to project name)
 # -f, --force    Overwrite existing files
 ```
 
@@ -654,8 +711,8 @@ your-api-tests/
 ### **Ready to Use**
 
 ```bash
-# ✅ Generate enterprise test suites
-restifiedts create-test
+# ✅ Scaffold enterprise test suites
+restifiedts scaffold
 
 # ✅ Run comprehensive examples with enterprise config
 npm run examples
