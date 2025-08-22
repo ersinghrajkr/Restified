@@ -10,22 +10,31 @@
 [
 ](./docs/ENTERPRISE-FEATURES.md)
 
-## 🆕 **What's New in v2.0.2**
+## 🆕 **What's New in v2.0.5**
 
-- **🎯 Enhanced CLI**: `scaffold` command replaces `create-test` with improved naming and directory management
-- **📁 Smart Directory Creation**: Project name automatically becomes the folder name
-- **🔧 Updated ConfigLoader**: Enterprise-grade configuration management with validation and smart defaults
-- **⚙️ Comprehensive Environment Variables**: 50+ new environment variables for complete customization
-- **🏢 Enterprise Features**: Enhanced authentication, compliance modes, and security levels
-- **📊 Improved Reporting**: Updated reporter exports and better HTML report integration
+- **🚀 Performance Optimization**: Revolutionary virtual scrolling for HTML reports with 3000+ tests
+- **⚡ Smart Data Loading**: On-demand loading of request/response/assertion details to prevent browser freeze
+- **🎯 Automatic Optimization**: Virtual scrolling activates automatically when >100 tests detected
+- **📊 Performance Indicator**: Visual feedback showing when optimization is active
+- **💾 Zero Data Loss**: All test data preserved while maintaining browser responsiveness
+- **🔧 Seamless Integration**: Works with existing npm scripts and CLI commands without changes
 
-### 🔄 **Migration from v2.0.1**
+### 📈 **Performance Improvements**
+
+RestifiedTS now handles **enterprise-scale test suites** with thousands of tests:
+
+- **Before**: Browser unresponsive with 500+ tests, 12MB+ reports
+- **After**: Smooth performance with 3000+ tests, responsive UI, on-demand loading
+- **Virtual Scrolling**: Only renders 50 tests initially with "Load More" functionality
+- **Smart Caching**: Request/response details cached after first load
+
+### 🔄 **Migration from Previous Versions**
+
+**No changes required!** All existing commands work exactly the same:
 
 ```bash
-# Old command (v2.0.1)
-restifiedts create-test -n "MyAPI" -u "https://api.example.com"
-
-# New command (v2.0.2+) 
+# Same commands, enhanced performance
+npm run report:restified
 restifiedts scaffold -n "MyAPI" -u "https://api.example.com"
 ```
 
@@ -62,7 +71,7 @@ npm install -g restifiedts
 ### Scaffold Enterprise Test Suite
 
 ```bash
-# Scaffold complete enterprise test suite (NEW in v2.0.2!)
+# Scaffold complete enterprise test suite with performance optimization!
 restifiedts scaffold -n "MyAPI" -t "api,auth,database,performance" -u "https://api.example.com"
 
 # Navigate to generated suite

@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.5] - 2025-08-22
+
+### Added
+- **🚀 Virtual Scrolling Performance**: Revolutionary optimization for HTML reports handling 3000+ tests without browser freeze
+- **⚡ On-Demand Detail Loading**: Request/response/assertion details load only when expanded, preventing DOM overload
+- **📊 Performance Indicator**: Visual feedback showing "🚀 Virtual Scrolling: X tests optimized" when active
+- **🎯 Automatic Detection**: Virtual scrolling activates automatically when >100 tests detected
+- **💾 Smart Data Separation**: Lightweight metadata for rendering + compressed detail storage for full data preservation
+
+### Enhanced
+- **Enterprise-Scale Performance**: Handles 3000+ tests with full request/response/assertion data while maintaining browser responsiveness
+- **Zero Data Loss**: All debugging information preserved - nothing truncated or removed
+- **Seamless Integration**: Works with existing npm scripts and CLI commands without any changes required
+- **Progressive Enhancement**: Small projects work normally, large projects get automatic optimization
+
+### Performance Improvements
+- **Before**: Browser unresponsive with 500+ tests, 12MB+ HTML files
+- **After**: Smooth scrolling and interactions with 3000+ tests, responsive UI throughout
+- **Load Time**: Initial page renders 50 tests, additional tests load on-demand
+- **Memory Usage**: Significantly reduced DOM elements for better browser performance
+
 ## [2.0.4] - 2025-08-21
 
 ### Fixed

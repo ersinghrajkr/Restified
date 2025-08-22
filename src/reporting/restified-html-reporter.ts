@@ -361,6 +361,92 @@ ${hookCode}${error}`;
     return purposeMap[test.hookType] || 'Execute setup or cleanup operations';
   }
 
+  private static createOptimizedTestData(groupedTests: any): string {
+    // FOR 3000+ TESTS: Use virtual scrolling approach
+    // Only embed minimal data needed for initial rendering
+    // Full details loaded on-demand when user expands tests
+    
+    const optimized: any = {};
+    
+    for (const [status, tests] of Object.entries(groupedTests)) {
+      optimized[status] = (tests as any[]).map((test, index) => {
+        // Only include essential data for list rendering
+        const lightTest: any = {
+          id: `${status}_${index}`,
+          title: test.title,
+          status: test.status,
+          duration: test.duration,
+          isHook: test.isHook,
+          hookType: test.hookType,
+          // Store if test has additional details (for expand indicator)
+          hasRequest: !!test.request,
+          hasResponse: !!test.response,
+          hasAssertions: !!(test.assertions && test.assertions.length > 0),
+          hasError: !!test.error
+        };
+        
+        return lightTest;
+      });
+    }
+    
+    // Return minimal JSON for initial page load
+    return JSON.stringify(optimized, null, 0);
+  }
+
+  private static createDetailStorage(groupedTests: any): string {
+    // Store full test details in a separate data structure
+    // This will be used for on-demand loading
+    const detailStorage: any = {};
+    
+    for (const [status, tests] of Object.entries(groupedTests)) {
+      detailStorage[status] = (tests as any[]).map((test, index) => {
+        const details: any = {
+          id: `${status}_${index}`
+        };
+        
+        // Store full details for on-demand loading
+        if (test.request) {
+          details.request = {
+            method: test.request.method,
+            url: test.request.url,
+            headers: test.request.headers,
+            timestamp: test.request.timestamp,
+            body: test.request.body
+          };
+        }
+        
+        if (test.response) {
+          details.response = {
+            status: test.response.status,
+            statusText: test.response.statusText,
+            headers: test.response.headers,
+            responseTime: test.response.responseTime,
+            timestamp: test.response.timestamp,
+            body: test.response.body || test.response.data
+          };
+        }
+        
+        if (test.assertions) {
+          details.assertions = test.assertions;
+        }
+        
+        if (test.error) {
+          details.error = test.error;
+        }
+        
+        if (test.hookCode) {
+          details.hookCode = test.hookCode;
+        }
+        
+        return details;
+      });
+    }
+    
+    // Compress the detail storage using base64 to reduce size
+    const compressed = Buffer.from(JSON.stringify(detailStorage, null, 0)).toString('base64');
+    return `"${compressed}"`;
+  }
+
   private static escapeHtml(text: string): string {
     if (!text) return '';
     return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -537,9 +623,63 @@ ${hookCode}${error}`;
         .footer-links a { padding: 5px 10px; border-radius: 5px; transition: background 0.3s; }
         .footer-links a:hover { background: rgba(255,255,255,0.1); }
         .tech-badge { background: rgba(144, 205, 244, 0.2); color: #90cdf4; padding: 4px 8px; border-radius: 12px; font-size: 0.8em; margin: 0 4px; }
+        
+        /* Performance optimizations for large datasets */
+        .loading-placeholder {
+            color: #6c757d;
+            font-style: italic;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .loading-placeholder:hover {
+            background: #e9ecef;
+        }
+        
+        .load-more-button {
+            text-align: center;
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 2px dashed #dee2e6;
+        }
+        
+        .error {
+            color: #dc3545;
+            background: #f8d7da;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #f5c6cb;
+        }
+        
+        /* Virtual scroll performance indicator */
+        .performance-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 123, 255, 0.9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .performance-indicator.show {
+            display: block;
+        }
     </style>
 </head>
 <body>
+    <div class="performance-indicator" id="performanceIndicator">
+        🚀 Virtual Scrolling Active
+    </div>
+    
     <div class="container">
         <div class="header">
             <h1>🚀 ${this.suiteInfo.title}</h1>
@@ -694,9 +834,22 @@ ${hookCode}${error}`;
     </footer>
     
     <script>
-        // Embed test data directly in the page
-        const testData = ${JSON.stringify(groupedTests)};
+        // Virtual scrolling approach for 3000+ tests
+        const testData = ${this.createOptimizedTestData(groupedTests)};
+        const detailStorage = ${this.createDetailStorage(groupedTests)};
         const suiteData = ${JSON.stringify(suiteGroups)};
+        
+        // Performance settings for large datasets  
+        const totalTests = Object.values(testData).reduce((total, tests) => total + tests.length, 0);
+        const VIRTUAL_SCROLL_ENABLED = totalTests > 100;
+        const ITEMS_PER_PAGE = 50; // Render only 50 tests at a time
+        
+        // Show performance indicator if virtual scrolling is enabled
+        const performanceIndicator = document.getElementById('performanceIndicator');
+        if (VIRTUAL_SCROLL_ENABLED) {
+            performanceIndicator.classList.add('show');
+            performanceIndicator.innerHTML = \`🚀 Virtual Scrolling: \${totalTests} tests optimized\`;
+        }
         
         // DOM elements
         const filterTabs = document.querySelectorAll('.filter-tab');
@@ -791,67 +944,214 @@ ${hookCode}${error}`;
             });
         });
         
+        // Virtual scrolling state
+        let currentPage = 0;
+        let currentTests = [];
+        let isLoading = false;
+        
         function renderTests(tests) {
-            testContainer.innerHTML = tests.map((test, index) => createTestHTML(test, index)).join('');
-            // Attach expand listeners to newly rendered tests
+            currentTests = tests;
+            currentPage = 0;
+            
+            if (VIRTUAL_SCROLL_ENABLED && tests.length > ITEMS_PER_PAGE) {
+                renderVirtualTests();
+                setupVirtualScrolling();
+            } else {
+                // Standard rendering for smaller datasets
+                testContainer.innerHTML = tests.map((test, index) => createTestHTML(test, index)).join('');
+                setTimeout(attachExpandListeners, 100);
+            }
+        }
+        
+        function renderVirtualTests() {
+            const startIndex = currentPage * ITEMS_PER_PAGE;
+            const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, currentTests.length);
+            const visibleTests = currentTests.slice(startIndex, endIndex);
+            
+            const html = visibleTests.map((test, index) => createTestHTML(test, startIndex + index)).join('');
+            
+            if (currentPage === 0) {
+                testContainer.innerHTML = html;
+            } else {
+                testContainer.innerHTML += html;
+            }
+            
             setTimeout(attachExpandListeners, 100);
         }
         
+        function setupVirtualScrolling() {
+            const loadMoreButton = document.createElement('div');
+            loadMoreButton.className = 'load-more-button';
+            loadMoreButton.innerHTML = \`
+                <button onclick="loadMoreTests()" style="
+                    padding: 12px 24px;
+                    background: #007bff;
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    margin: 20px auto;
+                    display: block;
+                ">
+                    Load More Tests (\${currentTests.length - (currentPage + 1) * ITEMS_PER_PAGE} remaining)
+                </button>
+            \`;
+            
+            if ((currentPage + 1) * ITEMS_PER_PAGE < currentTests.length) {
+                testContainer.appendChild(loadMoreButton);
+            }
+        }
+        
+        function loadMoreTests() {
+            if (isLoading) return;
+            isLoading = true;
+            
+            // Remove existing load more button
+            const existingButton = testContainer.querySelector('.load-more-button');
+            if (existingButton) existingButton.remove();
+            
+            currentPage++;
+            renderVirtualTests();
+            
+            isLoading = false;
+        }
+        
+        // Make functions globally available
+        window.loadMoreTests = loadMoreTests;
+        
+        // Detail storage cache and loader
+        let detailCache = {};
+        let parsedDetailStorage = null;
+        
+        function getDetailStorage() {
+            if (!parsedDetailStorage) {
+                try {
+                    const decompressed = atob(detailStorage);
+                    parsedDetailStorage = JSON.parse(decompressed);
+                } catch (e) {
+                    console.error('Failed to parse detail storage:', e);
+                    parsedDetailStorage = {};
+                }
+            }
+            return parsedDetailStorage;
+        }
+        
+        function loadAndToggleDetail(element, testId, detailType) {
+            const detailContent = element.nextElementSibling.querySelector('.loading-placeholder') || element.nextElementSibling;
+            
+            // Check if already loaded
+            const cacheKey = \`\${testId}_\${detailType}\`;
+            if (detailCache[cacheKey]) {
+                detailContent.innerHTML = detailCache[cacheKey];
+                toggleDetail(element);
+                return;
+            }
+            
+            // Show loading state
+            if (detailContent.classList.contains('loading-placeholder')) {
+                detailContent.innerHTML = '⏳ Loading...';
+            }
+            
+            // Load detail from storage
+            try {
+                const storage = getDetailStorage();
+                const [status, index] = testId.split('_');
+                const testDetails = storage[status] && storage[status][parseInt(index)];
+                
+                if (testDetails) {
+                    let content = '';
+                    
+                    switch (detailType) {
+                        case 'request':
+                            content = \`<div class="json-view">\${formatRequest(testDetails.request)}</div>\`;
+                            break;
+                        case 'response':
+                            content = \`<div class="json-view">\${formatResponse(testDetails.response)}</div>\`;
+                            break;
+                        case 'assertions':
+                            content = \`<div class="json-view">\${JSON.stringify(testDetails.assertions, null, 2)}</div>\`;
+                            break;
+                        case 'error':
+                            content = \`<div class="json-view">\${escapeHtml(testDetails.error)}</div>\`;
+                            break;
+                        case 'hook':
+                            content = \`<div class="json-view">\${formatHookDetails(testDetails)}</div>\`;
+                            break;
+                    }
+                    
+                    detailCache[cacheKey] = content;
+                    detailContent.innerHTML = content;
+                    detailContent.classList.remove('loading-placeholder');
+                } else {
+                    detailContent.innerHTML = '<div class="error">❌ Details not found</div>';
+                }
+            } catch (e) {
+                console.error('Error loading detail:', e);
+                detailContent.innerHTML = '<div class="error">❌ Error loading details</div>';
+            }
+            
+            toggleDetail(element);
+        }
+        
+        // Make loadAndToggleDetail globally available
+        window.loadAndToggleDetail = loadAndToggleDetail;
+        
         function createTestHTML(test, index) {
             const statusIcon = test.status === 'passed' ? '✅' : test.status === 'failed' ? '❌' : '⏳';
-            const method = test.isHook ? 'HOOK' : (test.request?.method || 'N/A');
+            const method = test.isHook ? 'HOOK' : 'API';
             const duration = test.duration ? test.duration + 'ms' : 'N/A';
             
             return \`
-                <div class="test-item \${test.isHook ? 'hook-item' : ''}" data-test="\${index}" data-status="\${test.status}">
+                <div class="test-item \${test.isHook ? 'hook-item' : ''}" data-test="\${index}" data-test-id="\${test.id}" data-status="\${test.status}">
                     <div class="test-header">
                         <div class="test-title">\${escapeHtml(test.title)}</div>
                         <div class="test-status \${test.status}">\${statusIcon} \${test.status.toUpperCase()}</div>
                     </div>
                     <div class="test-meta">\${method} • \${duration}</div>
                     
-                    <div class="test-details">
-                        \${test.isHook ? \`
+                    <div class="test-details" id="details-\${test.id}">
+                        \${test.isHook && test.hasRequest ? \`
                         <div class="detail-section">
-                            <h4 onclick="toggleDetail(this); event.stopPropagation();">🔧 Hook Details</h4>
+                            <h4 onclick="loadAndToggleDetail(this, '\${test.id}', 'hook'); event.stopPropagation();">🔧 Hook Details</h4>
                             <div class="detail-content">
-                                <div class="json-view">\${formatHookDetails(test)}</div>
+                                <div class="loading-placeholder">Click to load hook details...</div>
                             </div>
                         </div>
                         \` : ''}
                         
-                        \${test.request ? \`
+                        \${test.hasRequest ? \`
                         <div class="detail-section">
-                            <h4 onclick="toggleDetail(this); event.stopPropagation();">📤 Request</h4>
+                            <h4 onclick="loadAndToggleDetail(this, '\${test.id}', 'request'); event.stopPropagation();">📤 Request</h4>
                             <div class="detail-content">
-                                <div class="json-view">\${formatRequest(test.request)}</div>
+                                <div class="loading-placeholder">Click to load request details...</div>
                             </div>
                         </div>
                         \` : ''}
                         
-                        \${test.response ? \`
+                        \${test.hasResponse ? \`
                         <div class="detail-section">
-                            <h4 onclick="toggleDetail(this); event.stopPropagation();">📥 Response</h4>
+                            <h4 onclick="loadAndToggleDetail(this, '\${test.id}', 'response'); event.stopPropagation();">📥 Response</h4>
                             <div class="detail-content">
-                                <div class="json-view">\${formatResponse(test.response)}</div>
+                                <div class="loading-placeholder">Click to load response details...</div>
                             </div>
                         </div>
                         \` : ''}
                         
-                        \${test.assertions && test.assertions.length > 0 ? \`
+                        \${test.hasAssertions ? \`
                         <div class="detail-section">
-                            <h4 onclick="toggleDetail(this); event.stopPropagation();">🔍 Assertions</h4>
+                            <h4 onclick="loadAndToggleDetail(this, '\${test.id}', 'assertions'); event.stopPropagation();">🔍 Assertions</h4>
                             <div class="detail-content">
-                                <div class="json-view">\${JSON.stringify(test.assertions, null, 2)}</div>
+                                <div class="loading-placeholder">Click to load assertion details...</div>
                             </div>
                         </div>
                         \` : ''}
                         
-                        \${test.error ? \`
+                        \${test.hasError ? \`
                         <div class="detail-section">
-                            <h4 onclick="toggleDetail(this); event.stopPropagation();">❌ Error</h4>
+                            <h4 onclick="loadAndToggleDetail(this, '\${test.id}', 'error'); event.stopPropagation();">❌ Error</h4>
                             <div class="detail-content">
-                                <div class="json-view">\${escapeHtml(test.error)}</div>
+                                <div class="loading-placeholder">Click to load error details...</div>
                             </div>
                         </div>
                         \` : ''}

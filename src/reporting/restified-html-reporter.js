@@ -2,16 +2,17 @@
  * Restified HTML Reporter - JavaScript Wrapper
  */
 
-require('ts-node/register');
-const { RestifiedHtmlReporter } = require('./restified-html-reporter.ts');
+const { RestifiedHtmlReporter } = require('../../dist/reporting/restified-html-reporter.js');
 const path = require('path');
 
 function RestifiedReporter(runner) {
+    console.log('📊 RestifiedReporter wrapper started');
     RestifiedHtmlReporter.reset();
 
     // Track test execution times
     runner.on('test', function(test) {
         test.startTime = Date.now();
+        console.log('📋 Test started:', test.title.substring(0, 50) + '...');
     });
 
     // Track hook execution times
@@ -142,6 +143,7 @@ function RestifiedReporter(runner) {
 
     runner.once('end', function() {
         console.log('\n🚀 Generating Restified HTML Report...');
+        console.log('📋 Test stats:', this.stats);
         
         // Try to get configuration from environment or config file
         let configuredPath = null;
@@ -189,7 +191,13 @@ function RestifiedReporter(runner) {
         }
         
         // Use the configured path, or let the reporter use its own defaults
-        RestifiedHtmlReporter.generateReport(configuredPath);
+        try {
+            RestifiedHtmlReporter.generateReport(configuredPath);
+            console.log('✅ Report generation completed successfully');
+        } catch (error) {
+            console.error('❌ Error generating report:', error.message);
+            console.error('Stack:', error.stack);
+        }
     });
 }
 
