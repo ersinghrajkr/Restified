@@ -57,6 +57,12 @@ class RestifiedHtmlReporterImpl {
       console.log('🚀 Starting Restified test execution...');
     });
 
+    runner.on('suite', (suite: any) => {
+      if (suite.title && suite.title !== '' && !suite.root) {
+        console.log(`\n📁 ${suite.title}`);
+      }
+    });
+
     runner.on('test', (test: any) => {
       // Store test context
       const currentTest = global.__RESTIFIED_TEST_CONTEXT__;
@@ -69,18 +75,24 @@ class RestifiedHtmlReporterImpl {
       this.suiteInfo.passed++;
       const testResult = this.createTestResult(test, 'passed');
       this.testResults.push(testResult);
+      console.log(`  ✅ ${test.fullTitle()}`);
     });
 
     runner.on('fail', (test: any) => {
       this.suiteInfo.failed++;
       const testResult = this.createTestResult(test, 'failed', test.err);
       this.testResults.push(testResult);
+      console.log(`  ❌ ${test.fullTitle()}`);
+      if (test.err) {
+        console.log(`     ${test.err.message}`);
+      }
     });
 
     runner.on('pending', (test: any) => {
       this.suiteInfo.pending++;
       const testResult = this.createTestResult(test, 'pending');
       this.testResults.push(testResult);
+      console.log(`  ⏳ ${test.fullTitle()}`);
     });
 
     runner.on('end', () => {
@@ -88,7 +100,15 @@ class RestifiedHtmlReporterImpl {
       this.suiteInfo.duration = this.suiteInfo.endTime.getTime() - this.suiteInfo.startTime.getTime();
       this.suiteInfo.total = this.testResults.length;
 
-      console.log('📊 Generating Restified HTML Report...');
+      // Display test summary
+      console.log('\n📊 Test Results Summary:');
+      console.log(`   ✅ Passed: ${this.suiteInfo.passed}`);
+      console.log(`   ❌ Failed: ${this.suiteInfo.failed}`);
+      console.log(`   ⏳ Pending: ${this.suiteInfo.pending}`);
+      console.log(`   📈 Total: ${this.suiteInfo.total}`);
+      console.log(`   ⏱️  Duration: ${this.suiteInfo.duration}ms`);
+
+      console.log('\n📊 Generating Restified HTML Report...');
       this.generateReport();
     });
   }

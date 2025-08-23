@@ -23,6 +23,25 @@ export class ThenStep {
     addFormats(this.ajv);
   }
 
+  /**
+   * Validates the HTTP response status code
+   * @param {number} expectedStatus - Expected HTTP status code (200, 201, 404, etc.)
+   * @returns {this} ThenStep instance for method chaining
+   * @example
+   * ```typescript
+   * restified.given()
+   *   .baseURL('https://api.example.com')
+   * .when()
+   *   .get('/users')
+   *   .execute()
+   * .then(response => response
+   *   .statusCode(200)           // Success
+   *   .statusCode(201)           // Created
+   *   .statusCode(404)           // Not Found
+   *   .execute()
+   * );
+   * ```
+   */
   statusCode(expectedStatus: number): this {
     const assertion: AssertionResult = {
       passed: this.response.status === expectedStatus,
@@ -35,6 +54,24 @@ export class ThenStep {
     return this;
   }
 
+  /**
+   * Validates the HTTP response status code is one of the provided values
+   * @param {number[]} statusCodes - Array of acceptable HTTP status codes
+   * @returns {this} ThenStep instance for method chaining
+   * @example
+   * ```typescript
+   * restified.given()
+   *   .baseURL('https://api.example.com')
+   * .when()
+   *   .get('/users')
+   *   .execute()
+   * .then(response => response
+   *   .statusCodeIn([200, 201, 202])  // Accept any of these success codes
+   *   .statusCodeIn([400, 422])       // Accept validation error codes
+   *   .execute()
+   * );
+   * ```
+   */
   statusCodeIn(statusCodes: number[]): this {
     const assertion: AssertionResult = {
       passed: statusCodes.includes(this.response.status),
@@ -87,6 +124,28 @@ export class ThenStep {
     return this;
   }
 
+  /**
+   * Validates JSON response data using JSONPath expressions
+   * @param {string} path - JSONPath expression (e.g., '$.data[0].id', '$.users[*].name')
+   * @param {any} [expectedValue] - Expected value at the JSONPath (if omitted, just checks existence)
+   * @returns {this} ThenStep instance for method chaining
+   * @example
+   * ```typescript
+   * restified.given()
+   *   .baseURL('https://api.example.com')
+   * .when()
+   *   .get('/users/123')
+   *   .execute()
+   * .then(response => response
+   *   .jsonPath('$.id', 123)                    // Check specific value
+   *   .jsonPath('$.name')                       // Check field exists
+   *   .jsonPath('$.email', 'user@example.com')  // Check email value
+   *   .jsonPath('$.users[*].id')                // Check all users have id
+   *   .jsonPath('$.data.length', 10)            // Check array length
+   *   .execute()
+   * );
+   * ```
+   */
   jsonPath(path: string, expectedValue?: any): this {
     try {
       const actualValues = jp.query(this.response.data, path);

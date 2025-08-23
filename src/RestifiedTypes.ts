@@ -1,23 +1,80 @@
+/**
+ * Configuration for HTTP requests
+ * @interface RequestConfig
+ * @example
+ * ```typescript
+ * const config: RequestConfig = {
+ *   baseURL: 'https://api.example.com',
+ *   timeout: 30000,
+ *   headers: { 'User-Agent': 'MyApp/1.0' },
+ *   retries: 3
+ * };
+ * ```
+ */
 export interface RequestConfig {
+  /** Base URL for requests (e.g., 'https://api.example.com') */
   baseURL?: string;
+  /** Request timeout in milliseconds (default: 10000) */
   timeout?: number;
+  /** HTTP headers to include with requests */
   headers?: Record<string, string>;
+  /** Authentication configuration */
   auth?: AuthConfig;
+  /** Number of retry attempts on failure (default: 0) */
   retries?: number;
+  /** Delay between retries in milliseconds (default: 1000) */
   retryDelay?: number;
 }
 
+/**
+ * Authentication configuration for API requests
+ * @interface AuthConfig
+ * @example
+ * ```typescript
+ * // Bearer token authentication
+ * const bearerAuth: AuthConfig = {
+ *   type: 'bearer',
+ *   token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+ * };
+ * 
+ * // Basic authentication
+ * const basicAuth: AuthConfig = {
+ *   type: 'basic',
+ *   username: 'user@example.com',
+ *   password: 'password123'
+ * };
+ * 
+ * // API Key authentication
+ * const apiKeyAuth: AuthConfig = {
+ *   type: 'api-key',
+ *   apiKey: 'sk-1234567890abcdef',
+ *   keyName: 'X-API-Key',
+ *   keyLocation: 'header'
+ * };
+ * ```
+ */
 export interface AuthConfig {
+  /** Authentication type */
   type: 'bearer' | 'basic' | 'api-key' | 'oauth2';
+  /** Bearer token (for bearer auth) */
   token?: string;
+  /** Username (for basic auth) */
   username?: string;
+  /** Password (for basic auth) */
   password?: string;
+  /** API key value (for api-key auth) */
   apiKey?: string;
+  /** API key header/query parameter name (for api-key auth) */
   keyName?: string;
+  /** Where to place the API key (for api-key auth) */
   keyLocation?: 'header' | 'query';
+  /** OAuth2 client ID */
   clientId?: string;
+  /** OAuth2 client secret */
   clientSecret?: string;
+  /** OAuth2 scope */
   scope?: string;
+  /** OAuth2 token endpoint URL */
   tokenUrl?: string;
 }
 

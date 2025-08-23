@@ -51,15 +51,76 @@ export class Restified {
     this.configureReporting();
   }
 
+  /**
+   * Starts a new API test request configuration using RestifiedTS fluent DSL
+   * @returns {GivenStep} GivenStep instance for chaining request setup methods
+   * @example
+   * ```typescript
+   * const response = await restified
+   *   .given()
+   *     .baseURL('https://api.example.com')
+   *     .header('Content-Type', 'application/json')
+   *     .bearerToken('eyJhbGciOiJIUzI1NiJ9...')
+   *   .when()
+   *     .get('/users')
+   *     .execute();
+   * ```
+   * @example
+   * ```typescript
+   * // With authentication and variables
+   * await restified
+   *   .given()
+   *     .useClient('api')
+   *     .variable('userId', 123)
+   *     .header('X-Test-ID', '{{$util.random.uuid()}}')
+   *   .when()
+   *     .post('/users/{{userId}}/profile')
+   *     .body({ name: 'John Doe' })
+   *     .execute();
+   * ```
+   */
   given(): GivenStep {
     return new GivenStep(this);
   }
 
   // Variable management methods
+  
+  /**
+   * Sets a global variable that can be used across all tests and requests
+   * @param {string} name - Variable name (can be referenced as {{variableName}})
+   * @param {any} value - Variable value (string, number, object, array, etc.)
+   * @example
+   * ```typescript
+   * restified.setGlobalVariable('authToken', 'Bearer eyJhbGciOiJIUzI1NiJ9...');
+   * restified.setGlobalVariable('baseUrl', 'https://api.staging.example.com');
+   * restified.setGlobalVariable('testUser', { id: 123, email: 'test@example.com' });
+   * 
+   * // Use in requests
+   * restified.given()
+   *   .baseURL('{{baseUrl}}')
+   *   .header('Authorization', '{{authToken}}')
+   *   .when().get('/users/{{testUser.id}}');
+   * ```
+   */
   setGlobalVariable(name: string, value: any): void {
     this.variableStore.setGlobalVariable(name, value);
   }
 
+  /**
+   * Retrieves a global variable value
+   * @param {string} name - Variable name to retrieve
+   * @returns {any} Variable value or undefined if not found
+   * @example
+   * ```typescript
+   * const token = restified.getGlobalVariable('authToken');
+   * const userId = restified.getGlobalVariable('currentUserId');
+   * 
+   * // Check if variable exists
+   * if (restified.getGlobalVariable('sessionId')) {
+   *   // Variable exists
+   * }
+   * ```
+   */
   getGlobalVariable(name: string): any {
     return this.variableStore.getGlobalVariable(name);
   }
@@ -437,6 +498,30 @@ export class Restified {
 
   // Utility system access methods
   
+  /**
+   * Executes a utility function synchronously (130+ built-in functions available)
+   * @param {string} functionPath - Utility function path (e.g., 'string.toUpperCase', 'date.now', 'random.uuid')
+   * @param {...any} args - Arguments to pass to the utility function
+   * @returns {UtilityResult} Result containing success status, value, and metadata
+   * @example
+   * ```typescript
+   * // String utilities
+   * const upperName = restified.utility('string.toUpperCase', 'john doe'); // 'JOHN DOE'
+   * const slug = restified.utility('string.slugify', 'Hello World!'); // 'hello-world'
+   * 
+   * // Date utilities  
+   * const now = restified.utility('date.now', 'ISO'); // '2023-12-01T10:30:00.000Z'
+   * const futureDate = restified.utility('date.addDays', '2023-12-01', 7, 'YYYY-MM-DD');
+   * 
+   * // Random utilities
+   * const uuid = restified.utility('random.uuid'); // '550e8400-e29b-41d4-a716-446655440000'
+   * const randomNum = restified.utility('random.number', 1, 100); // Random number 1-100
+   * 
+   * // Crypto utilities
+   * const hash = restified.utility('crypto.sha256', 'password123');
+   * const jwt = restified.utility('crypto.generateJWT', { userId: 123 }, 'secret');
+   * ```
+   */
   utility(functionPath: string, ...args: any[]): UtilityResult {
     this.utilityManager.updateContext({
       currentRequest: this.requestDetails,
@@ -445,6 +530,25 @@ export class Restified {
     return this.utilityManager.execute(functionPath, ...args);
   }
 
+  /**
+   * Executes a utility function asynchronously (for async operations like file I/O)
+   * @param {string} functionPath - Utility function path (e.g., 'file.read', 'network.fetch')
+   * @param {...any} args - Arguments to pass to the utility function
+   * @returns {Promise<UtilityResult>} Promise resolving to result with success status and value
+   * @example
+   * ```typescript
+   * // File utilities (async)
+   * const fileContent = await restified.utilityAsync('file.read', './test-data.json');
+   * await restified.utilityAsync('file.write', './output.txt', 'Test content');
+   * 
+   * // Network utilities (async)
+   * const response = await restified.utilityAsync('network.fetch', 'https://api.example.com/health');
+   * const isOnline = await restified.utilityAsync('network.ping', 'google.com');
+   * 
+   * // Data processing (async)
+   * const processed = await restified.utilityAsync('data.processLarge', largeDataset);
+   * ```
+   */
   async utilityAsync(functionPath: string, ...args: any[]): Promise<UtilityResult> {
     this.utilityManager.updateContext({
       currentRequest: this.requestDetails,

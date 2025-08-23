@@ -7,14 +7,63 @@ export class WhenStep {
     private config: RequestConfig
   ) {}
 
+  /**
+   * Executes a GET HTTP request
+   * @param {string} path - API endpoint path (supports variable resolution)
+   * @returns {this} WhenStep instance for method chaining
+   * @example
+   * ```typescript
+   * restified.given()
+   *   .baseURL('https://api.example.com')
+   * .when()
+   *   .get('/users')                    // Simple GET
+   *   .get('/users/{{userId}}')         // With path variable
+   *   .get('/users?page={{pageNum}}')   // With query parameter
+   * ```
+   */
   get(path: string): this {
     return this.request('GET', path);
   }
 
+  /**
+   * Executes a POST HTTP request with optional request body
+   * @param {string} path - API endpoint path (supports variable resolution)
+   * @param {any} [body] - Request body (object, string, FormData, etc.)
+   * @returns {this} WhenStep instance for method chaining
+   * @example
+   * ```typescript
+   * restified.given()
+   *   .contentType('application/json')
+   * .when()
+   *   .post('/users', { name: 'John', email: 'john@example.com' })
+   *   .post('/users/{{userId}}/posts', {
+   *     title: 'My Post',
+   *     content: 'Post content here'
+   *   })
+   *   .post('/upload', formData)  // File upload
+   * ```
+   */
   post(path: string, body?: any): this {
     return this.request('POST', path, body);
   }
 
+  /**
+   * Executes a PUT HTTP request with optional request body
+   * @param {string} path - API endpoint path (supports variable resolution)
+   * @param {any} [body] - Request body (object, string, FormData, etc.)
+   * @returns {this} WhenStep instance for method chaining
+   * @example
+   * ```typescript
+   * restified.given()
+   *   .contentType('application/json')
+   * .when()
+   *   .put('/users/{{userId}}', {
+   *     name: 'Updated Name',
+   *     email: 'updated@example.com'
+   *   })
+   *   .put('/posts/{{postId}}', { title: 'Updated Title' })
+   * ```
+   */
   put(path: string, body?: any): this {
     return this.request('PUT', path, body);
   }
@@ -23,6 +72,19 @@ export class WhenStep {
     return this.request('PATCH', path, body);
   }
 
+  /**
+   * Executes a DELETE HTTP request
+   * @param {string} path - API endpoint path (supports variable resolution)
+   * @returns {this} WhenStep instance for method chaining
+   * @example
+   * ```typescript
+   * restified.given()
+   *   .bearerToken('{{authToken}}')
+   * .when()
+   *   .delete('/users/{{userId}}')
+   *   .delete('/posts/{{postId}}/comments/{{commentId}}')
+   * ```
+   */
   delete(path: string): this {
     return this.request('DELETE', path);
   }

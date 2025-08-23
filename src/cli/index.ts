@@ -9,13 +9,14 @@ import { GenerateCommand } from './commands/generate.command';
 import { reportCommand } from './commands/report';
 import { initConfigCommand } from './commands/init-config';
 import { scaffoldCommand } from './commands/scaffold';
+import { createCommand } from './commands/create';
 
 const program = new Command();
 
 program
   .name('restifiedts')
   .description('Restified - Production-grade TypeScript API testing framework')
-  .version('1.0.0');
+  .version('2.0.7');
 
 // Add commands
 program.addCommand(new InitCommand().getCommand());
@@ -25,6 +26,7 @@ program.addCommand(new GenerateCommand().getCommand());
 program.addCommand(reportCommand);
 program.addCommand(initConfigCommand);
 program.addCommand(scaffoldCommand);
+program.addCommand(createCommand);
 
 // Global error handler
 process.on('uncaughtException', (error) => {

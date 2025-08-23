@@ -3,7 +3,9 @@
     "allow": [
       "Bash(npx mocha:*)",
       "Bash(cp:*)",
-      "Bash(npm install)"
+      "Bash(npm install)",
+      "Bash(mkdir:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []

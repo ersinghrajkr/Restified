@@ -6,11 +6,36 @@ export class GivenStep {
 
   constructor(private context: any) {}
 
+  /**
+   * Sets the base URL for the HTTP request
+   * @param {string} url - Base URL (supports variable resolution like {{baseUrl}})
+   * @returns {this} GivenStep instance for method chaining
+   * @example
+   * ```typescript
+   * restified.given()
+   *   .baseURL('https://api.example.com')
+   *   .baseURL('{{environment.apiUrl}}') // Using variables
+   * ```
+   */
   baseURL(url: string): this {
     this.config.baseURL = url;
     return this;
   }
 
+  /**
+   * Sets a single HTTP header for the request
+   * @param {string} name - Header name (e.g., 'Content-Type', 'Authorization')
+   * @param {string} value - Header value (supports variable resolution and utilities)
+   * @returns {this} GivenStep instance for method chaining
+   * @example
+   * ```typescript
+   * restified.given()
+   *   .header('Content-Type', 'application/json')
+   *   .header('Authorization', 'Bearer {{authToken}}')
+   *   .header('X-Request-ID', '{{$util.random.uuid()}}')
+   *   .header('X-Timestamp', '{{$util.date.now("ISO")}}')
+   * ```
+   */
   header(name: string, value: string): this {
     if (!this.config.headers) {
       this.config.headers = {};
@@ -19,15 +44,57 @@ export class GivenStep {
     return this;
   }
 
+  /**
+   * Sets multiple HTTP headers at once
+   * @param {Record<string, string>} headers - Object containing header name-value pairs
+   * @returns {this} GivenStep instance for method chaining
+   * @example
+   * ```typescript
+   * restified.given()
+   *   .headers({
+   *     'Content-Type': 'application/json',
+   *     'Accept': 'application/json',
+   *     'User-Agent': 'RestifiedTS/2.0.6',
+   *     'X-API-Version': 'v2'
+   *   })
+   *   .headers({ 'Authorization': '{{bearerToken}}' }) // Can be chained
+   * ```
+   */
   headers(headers: Record<string, string>): this {
     this.config.headers = { ...this.config.headers, ...headers };
     return this;
   }
 
+  /**
+   * Sets the Content-Type header for the request (shorthand for .header('Content-Type', type))
+   * @param {string} type - MIME type (e.g., 'application/json', 'application/xml', 'multipart/form-data')
+   * @returns {this} GivenStep instance for method chaining
+   * @example
+   * ```typescript
+   * restified.given()
+   *   .contentType('application/json')        // JSON requests
+   *   .contentType('application/xml')         // XML requests
+   *   .contentType('multipart/form-data')     // File uploads
+   *   .contentType('application/x-www-form-urlencoded') // Form data
+   * ```
+   */
   contentType(type: string): this {
     return this.header('Content-Type', type);
   }
 
+  /**
+   * Sets the Accept header for the request (shorthand for .header('Accept', type))
+   * @param {string} type - MIME type to accept in response (e.g., 'application/json', 'text/html')
+   * @returns {this} GivenStep instance for method chaining
+   * @example
+   * ```typescript
+   * restified.given()
+   *   .accept('application/json')  // Expect JSON response
+   *   .accept('text/html')         // Expect HTML response
+   *   .accept('application/xml')   // Expect XML response
+   *   .accept('* /*')               // Accept any response type
+   * ```
+   */
   accept(type: string): this {
     return this.header('Accept', type);
   }
@@ -37,6 +104,18 @@ export class GivenStep {
     return this;
   }
 
+  /**
+   * Sets Bearer token authentication (adds Authorization: Bearer <token> header)
+   * @param {string} token - JWT token or API token (without 'Bearer ' prefix)
+   * @returns {this} GivenStep instance for method chaining
+   * @example
+   * ```typescript
+   * restified.given()
+   *   .bearerToken('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...')
+   *   .bearerToken('{{authToken}}')           // Using variable
+   *   .bearerToken('{{$util.env.API_TOKEN}}') // From environment
+   * ```
+   */
   bearerToken(token: string): this {
     return this.auth({
       type: 'bearer',

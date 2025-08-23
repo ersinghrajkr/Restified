@@ -1,0 +1,43 @@
+/**
+ * RestifiedTS Configuration - Standard Setup
+ * 
+ * Includes common features most teams need:
+ * - Environment variables
+ * - Headers and authentication
+ * - Basic reporting
+ */
+
+import { RestifiedConfig } from 'restifiedts';
+
+const config: RestifiedConfig = {
+  // 🌍 Environment
+  environment: process.env.NODE_ENV || 'test',
+  
+  // 🚀 API Configuration  
+  clients: {
+    api: {
+      baseURL: process.env.API_URL || '{{baseUrl}}',
+      timeout: parseInt(process.env.API_TIMEOUT || '10000'),
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': '{{sanitizedName}}-tests/1.0.0'
+      }
+    }
+  },
+
+  // 🔐 Authentication (optional - uncomment if needed)
+  // authentication: {
+  //   endpoint: '/auth/login',
+  //   extractors: {
+  //     token: '$.token'
+  //   }
+  // },
+
+  // 📊 Reporting
+  reporting: {
+    formats: ['html'],
+    outputDir: 'reports'
+  }
+};
+
+export default config;

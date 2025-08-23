@@ -1,0 +1,28 @@
+/**
+ * Restified Configuration
+ */
+
+import { RestifiedConfig } from 'restifiedts';
+
+const config: RestifiedConfig = {
+  environment: process.env.TEST_ENV || 'development',
+  
+  clients: {
+    api: {
+      baseURL: process.env.API_GATEWAY_URL || '{{baseUrl}}',
+      timeout: parseInt(process.env.API_TIMEOUT || '10000'),
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': '{{sanitizedName}}-test-suite/1.0.0'
+      }
+    }
+  },
+  
+  reporting: {
+    formats: ['html', 'json'],
+    outputDir: process.env.REPORT_OUTPUT_DIR || 'reports',
+    filename: process.env.REPORT_FILENAME || 'restified-html-report.html'
+  }
+};
+
+export default config;
