@@ -1,5 +1,6 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
+import { ValidationUtils, ValidationError } from '../utils/ValidationUtils';
 
 export class GenerateCommand {
   getCommand(): Command {
@@ -17,28 +18,39 @@ export class GenerateCommand {
   private async execute(type: string, name: string, options: any): Promise<void> {
     try {
       console.log(chalk.blue(`🔧 Generating ${type}...`));
+      
+      // Validate inputs
+      const validTypes = ['test', 'config', 'auth'];
+      if (!validTypes.includes(type)) {
+        throw new ValidationError(`Unknown type: ${type}. Available types: ${validTypes.join(', ')}`, 'type');
+      }
+      
+      let sanitizedName = '';
+      if (name) {
+        sanitizedName = ValidationUtils.validateProjectName(name);
+      }
+      
+      if (options.path) {
+        ValidationUtils.validateFilePath(options.path);
+      }
 
       switch (type) {
         case 'test':
-          await this.generateTest(name, options);
+          await this.generateTest(sanitizedName, options);
           break;
         case 'config':
-          await this.generateConfig(name, options);
+          await this.generateConfig(sanitizedName, options);
           break;
         case 'auth':
-          await this.generateAuthTest(name, options);
+          await this.generateAuthTest(sanitizedName, options);
           break;
-        default:
-          console.error(chalk.red(`Unknown type: ${type}`));
-          console.log(chalk.yellow('Available types: test, config, auth'));
-          process.exit(1);
       }
 
       console.log(chalk.green('✅ Generation completed!'));
 
     } catch (error: any) {
       console.error(chalk.red('Error generating:'), error.message);
-      process.exit(1);
+      throw error; // Re-throw instead of process.exit
     }
   }
 

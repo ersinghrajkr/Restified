@@ -85,6 +85,7 @@ export interface HttpResponse {
   data: any;
   responseTime: number;
   config: any;
+  error?: string; // Optional error message for failed requests
 }
 
 // Enhanced configuration for user-friendly setup
@@ -139,6 +140,7 @@ export interface AuthenticationConfig {
 export interface ReportingConfig {
   enabled: boolean;
   outputDir: string;
+  outputFile?: string;               // Custom output file path (optional)
   formats: ('html' | 'json' | 'xml' | 'junit')[];
   openAfterGeneration: boolean;
   includeRequestResponse: boolean;
@@ -146,6 +148,7 @@ export interface ReportingConfig {
   
   // Report customization
   title?: string;                    // Custom report title (default: "Restified Test Report")
+  logo?: string;                     // Custom logo/emoji for reports (default: none)
   filename?: string;                 // Custom report filename (default: "restified-html-report.html")
   subtitle?: string;                 // Optional subtitle/description
   
@@ -154,9 +157,40 @@ export interface ReportingConfig {
   includeTracing?: boolean;
   includeCompliance?: boolean;
   generateExcelReport?: boolean;
+  
+  // Theme configuration
+  theme?: {
+    primaryColor?: string;
+    secondaryColor?: string;
+    accentColor?: string;
+  };
+  
+  // Footer configuration
+  footer?: {
+    show?: boolean;
+    text?: string;
+    links?: Array<{
+      text: string;
+      url: string;
+      external?: boolean;
+    }>;
+    copyright?: string;
+    timestamp?: boolean;
+    version?: string;
+    customHtml?: string;
+  };
+  
+  // Branding configuration
+  branding?: {
+    showPoweredBy?: boolean;
+    company?: string;
+    website?: string;
+  };
+  
   // Archival & Retention
   archiveReports?: boolean;
   retentionDays?: number;
+  
   // Distribution
   emailReports?: boolean;
   slackNotification?: boolean;

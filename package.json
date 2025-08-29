@@ -1,6 +1,6 @@
 {
   "name": "restifiedts",
-  "version": "2.0.7",
+  "version": "2.0.8",
   "description": "Production-grade TypeScript API testing framework with fluent DSL",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -8,27 +8,54 @@
     "restifiedts": "./dist/cli/index.js"
   },
   "scripts": {
+    "// Build & Development": "",
     "build": "tsc",
     "build:watch": "tsc --watch",
     "dev": "ts-node src/index.ts",
     "clean": "rimraf dist",
+    
+    "// Core Testing": "",
     "test": "mocha -r ts-node/register 'tests/**/*.spec.ts'",
     "test:unit": "mocha -r ts-node/register 'tests/unit/**/*.spec.ts'",
     "test:integration": "mocha -r ts-node/register 'tests/integration/**/*.spec.ts'",
     "test:coverage": "nyc mocha -r ts-node/register 'tests/**/*.spec.ts'",
-    "test:basic": "mocha -r ts-node/register 'tests/**/*.spec.ts'",
     "test:examples": "mocha -r ts-node/register 'examples/**/*.ts'",
+    
+    "// Scale Testing": "",
+    "test:quick": "npm run build && mocha -r ts-node/register 'examples/basic/simple-get.ts' --reporter ./dist/reporting/restified-html-reporter.js --timeout 12000 --no-config",
+    "test:enterprise-scale": "npm run build && mocha -r ts-node/register enterprise-scale-test.ts --reporter ./dist/reporting/restified-html-reporter.js --timeout 15000 --no-config",
+    
+    "// HTML Reports": "",
+    "report:html": "npm run build && mocha -r ts-node/register 'examples/**/*.ts' --reporter ./dist/reporting/restified-html-reporter.js && echo \"📊 RestifiedTS HTML report generated. Check console output for location.\"",
+    "report:html:unit": "npm run build && mocha -r ts-node/register 'tests/unit/**/*.spec.ts' --reporter ./src/reporting/restified-html-reporter.ts && echo \"📊 Unit tests HTML report generated.\"",
+    "report:html:integration": "npm run build && mocha -r ts-node/register 'tests/integration/**/*.spec.ts' --reporter ./src/reporting/restified-html-reporter.ts && echo \"📊 Integration tests HTML report generated.\"",
+    "report:html:all": "npm run build && mocha -r ts-node/register 'tests/**/*.spec.ts' --reporter ./src/reporting/restified-html-reporter.ts && echo \"📊 All tests HTML report generated.\"",
+    
+    "// Other Reports": "",
+    "report": "mocha --config .mocharc.json",
+    "report:allure": "mocha -r ts-node/register --reporter allure-mocha 'examples/**/*.ts' && echo \"📊 Allure report generated. Run 'allure serve allure-results' to view\"",
+    
+    "// Code Quality": "",
     "lint": "eslint . --ext .ts,.js",
     "lint:fix": "eslint . --ext .ts,.js --fix",
     "format": "prettier --write .",
+    
+    "// CLI & Demo": "",
     "cli": "ts-node src/cli/index.ts",
-    "examples": "npm run test:examples && npm run report:restified",
-    "report": "mocha --config .mocharc.json",
-    "report:allure": "mocha -r ts-node/register --reporter allure-mocha 'examples/**/*.ts' && echo \"📊 Allure report generated. Run 'allure serve allure-results' to view\"",
-    "report:restified": "mocha -r ts-node/register 'examples/**/*.ts' --reporter ./src/reporting/restified-html-reporter.js && echo \"📊 Restified HTML report generated. Check console output for location.\"",
-    "reports:clean": "rimraf reports mochawesome-report test-reports allure-results output test-output",
+    "examples": "npm run test:examples && npm run report:html",
+    "demo:reporter": "npm run test:quick && echo \"🎉 Demo complete! Check restified-reports/ folder for the generated HTML report.\"",
+    
+    "// Utilities": "",
+    "reports:clean": "rimraf reports mochawesome-report test-reports allure-results output test-output restified-reports raj-reports",
     "docs:serve": "echo \"📚 Documentation available at:\" && echo \"  📖 Main README: README.md\" && echo \"  📚 Documentation Hub: docs/README.md\" && echo \"  🏢 Enterprise Features: docs/ENTERPRISE-FEATURES.md\"",
     "docs:validate": "echo \"✅ Validating documentation links...\" && node -e \"console.log('📝 All documentation files organized and accessible')\"",
+    
+    "// Legacy (Deprecated)": "",
+    "test:basic": "mocha -r ts-node/register 'tests/**/*.spec.ts'",
+    "test:html": "npm run build && mocha -r ts-node/register 'examples/**/*.ts' --reporter ./src/reporting/restified-html-reporter.ts --timeout 30000",
+    "test:report": "npm run test:html",
+    
+    "// Publish": "",
     "prepublishOnly": "npm run clean && npm run build"
   },
   "keywords": [

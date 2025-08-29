@@ -8,6 +8,7 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import { ScaffoldOrchestrator } from '../core/ScaffoldOrchestrator';
 import { ScaffoldOptions, ValidationError } from '../types/ScaffoldTypes';
+import { ValidationUtils } from '../utils/ValidationUtils';
 
 export const scaffoldCommand = new Command('scaffold')
   .description('Scaffold test suite with progressive complexity options')
@@ -20,11 +21,29 @@ export const scaffoldCommand = new Command('scaffold')
   .action(async (options) => {
     try {
       // Parse and validate options
+      const sanitizedName = ValidationUtils.validateProjectName(options.name);
+      const sanitizedUrl = ValidationUtils.validateUrl(options.url);
+      const types = options.types.split(',').map((t: string) => t.trim());
+      
+      // Validate test types
+      const validTypes = ['api', 'auth', 'database', 'performance', 'security', 'graphql', 'websocket'];
+      for (const type of types) {
+        if (!validTypes.includes(type)) {
+          throw new ValidationError(`Invalid test type '${type}'. Valid types: ${validTypes.join(', ')}`, 'types');
+        }
+      }
+      
+      // Validate complexity level
+      const validComplexity = ['minimal', 'standard', 'enterprise'];
+      if (!validComplexity.includes(options.complexity)) {
+        throw new ValidationError(`Invalid complexity level '${options.complexity}'. Valid levels: ${validComplexity.join(', ')}`, 'complexity');
+      }
+      
       const scaffoldOptions: ScaffoldOptions = {
-        name: options.name,
-        types: options.types.split(',').map((t: string) => t.trim()),
-        url: options.url,
-        output: options.output,
+        name: sanitizedName,
+        types: types,
+        url: sanitizedUrl,
+        output: options.output ? ValidationUtils.validateProjectName(options.output) : undefined,
         complexity: options.complexity || 'minimal',
         force: options.force
       };
@@ -36,10 +55,9 @@ export const scaffoldCommand = new Command('scaffold')
       // Handle result
       if (result.success) {
         console.log(chalk.green(`\n🎉 ${result.message}`));
-        process.exit(0);
+        return; // Success - no need to exit
       } else {
-        console.log(chalk.red(`\n❌ ${result.message}`));
-        process.exit(1);
+        throw new Error(result.message); // Throw error instead of exit
       }
 
     } catch (error) {
@@ -61,7 +79,7 @@ export const scaffoldCommand = new Command('scaffold')
         console.log(chalk.red(`\n❌ Unexpected error: ${(error as Error).message}`));
       }
       
-      process.exit(1);
+      throw error; // Re-throw instead of process.exit
     }
   });
 

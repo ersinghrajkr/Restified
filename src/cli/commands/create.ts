@@ -58,15 +58,14 @@ export const createCommand = new Command('create')
         console.log(chalk.cyan('\n📊 Want to see live test execution?'));
         console.log(chalk.yellow('   restifiedts test --dashboard'));
         
-        process.exit(0);
+        return; // Success - no need to exit
       } else {
-        console.log(chalk.red(`\n❌ ${result.message}`));
-        process.exit(1);
+        throw new Error(result.message); // Throw error instead of exit
       }
 
     } catch (error) {
       console.log(chalk.red(`\n❌ Creation failed: ${(error as Error).message}`));
-      process.exit(1);
+      throw error; // Re-throw instead of process.exit
     }
   });
 

@@ -22,11 +22,19 @@ export const initConfigCommand = new Command('init-config')
       const configPath = path.join(projectRoot, configFileName);
 
       // Check if config already exists
-      if (fs.existsSync(configPath) && !options.force) {
-        console.log(chalk.yellow(`⚠️  Configuration file already exists: ${configFileName}`));
-        console.log(chalk.white('💡 Use --force to overwrite or choose a different type'));
-        console.log(chalk.gray('   Example: restifiedts init-config --type js --force'));
-        return;
+      try {
+        await fs.promises.access(configPath);
+        if (!options.force) {
+          console.log(chalk.yellow(`⚠️  Configuration file already exists: ${configFileName}`));
+          console.log(chalk.white('💡 Use --force to overwrite or choose a different type'));
+          console.log(chalk.gray('   Example: restifiedts init-config --type js --force'));
+          return;
+        }
+      } catch (error: any) {
+        if (error.code !== 'ENOENT') {
+          throw error; // Re-throw if it's not a "file not found" error
+        }
+        // File doesn't exist, which is what we want for new creation
       }
 
       // Generate config content based on type
@@ -44,7 +52,7 @@ export const initConfigCommand = new Command('init-config')
       }
 
       // Write config file
-      fs.writeFileSync(configPath, configContent);
+      await fs.promises.writeFile(configPath, configContent, 'utf8');
 
       console.log(chalk.green('✅ Configuration file generated successfully!'));
       console.log(chalk.white('📁 Location:'), chalk.cyan(configPath));
@@ -62,7 +70,7 @@ export const initConfigCommand = new Command('init-config')
 
     } catch (error) {
       console.log(chalk.red('\n❌ Error generating config file:'), error.message);
-      process.exit(1);
+      throw error; // Re-throw instead of process.exit
     }
   });
 

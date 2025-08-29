@@ -116,6 +116,23 @@ export class WhenStep {
       
       const axiosConfig = this.buildAxiosConfig();
       
+      // Enhanced request data capture before HTTP call for guaranteed reporting
+      const requestDataForReporting = {
+        method: requestDetails.method,
+        url: url,
+        headers: axiosConfig.headers || {},
+        body: requestDetails.body || null,
+        timestamp: new Date().toISOString(),
+        baseURL: axiosConfig.baseURL || ''
+      };
+      
+      // Store request data globally for the reporter to access
+      (global as any).__RESTIFIED_CURRENT_REQUEST__ = requestDataForReporting;
+      
+      if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+        console.log('🔍 WhenStep: Captured request data:', requestDataForReporting);
+      }
+      
       let response: AxiosResponse;
       
       if (['POST', 'PUT', 'PATCH'].includes(requestDetails.method)) {
@@ -143,6 +160,9 @@ export class WhenStep {
         config: response.config
       };
 
+      // Store successful response data globally for the reporter
+      (global as any).__RESTIFIED_CURRENT_RESPONSE__ = httpResponse;
+      
       this.context.setResponse(httpResponse);
       
       const { ThenStep } = require('./then.core');
@@ -161,11 +181,35 @@ export class WhenStep {
           config: error.response.config
         };
         
+        // Store error response data globally for the reporter
+        (global as any).__RESTIFIED_CURRENT_RESPONSE__ = httpResponse;
+        
         this.context.setResponse(httpResponse);
         const { ThenStep } = require('./then.core');
         return new ThenStep(this.context, httpResponse);
+      } else {
+        // Handle cases where there's no response (e.g., network errors, invalid URLs)
+        const errorHttpResponse: HttpResponse = {
+          status: 0,
+          statusText: error.message || 'Request Failed',
+          headers: {},
+          data: null,
+          responseTime: endTime - startTime,
+          config: {},
+          error: error.message || 'Unknown error'
+        };
+        
+        // Store error response data globally for the reporter
+        (global as any).__RESTIFIED_CURRENT_RESPONSE__ = errorHttpResponse;
+        (global as any).__RESTIFIED_CURRENT_ERROR__ = {
+          message: error.message,
+          stack: error.stack,
+          code: error.code,
+          type: error.constructor.name
+        };
       }
       
+      // Still throw the error to maintain existing behavior, but data is captured
       throw error;
     }
   }

@@ -38,11 +38,16 @@ npm run report:restified
 restifiedts scaffold -n "MyAPI" -u "https://api.example.com"
 ```
 
-**Key Changes:**
+### **🔄 Key Changes & Security Improvements:**
 - ✅ `scaffold` command creates folder with project name (not generic "tests" folder)
-- ✅ Enhanced ConfigLoader with enterprise validation
+- ✅ Enhanced ConfigLoader with enterprise validation and graceful fallbacks
 - ✅ 50+ new environment variables for complete customization
 - ✅ Better TypeScript integration and error handling
+- 🆕 **Security-hardened CLI**: All commands now validate inputs for safety
+- 🆕 **Path traversal protection**: Prevents `../../../` directory attacks
+- 🆕 **Command injection prevention**: Blocks malicious shell commands
+- 🆕 **AI-powered initialization**: Enhanced `init` command with intelligent recommendations
+- 🆕 **Async file operations**: Non-blocking file operations for better performance
 
 ---
 
@@ -483,12 +488,14 @@ restifiedts scaffold -t "api,auth,graphql,websocket,database,performance,securit
 - [📊 Reporting &amp; Analytics](./docs/REPORTING-MADE-EASY.md)
 - [👤 User Guide](./docs/USER-GUIDE.md)
 - [🛡️ Security](./docs/SECURITY.md)
+- [🔒 CLI Security Guide](./docs/CLI-SECURITY.md) - **New!**
 
 ### **Development**
 
 - [🤝 Contributing](./docs/CONTRIBUTING.md)
 - [📝 Changelog](./docs/CHANGELOG.md)
 - [🔧 Claude AI Instructions](./docs/CLAUDE.md)
+- [🏢 CLI Architecture](./src/cli/README.md)
 
 ---
 

@@ -16,9 +16,9 @@ const program = new Command();
 program
   .name('restifiedts')
   .description('Restified - Production-grade TypeScript API testing framework')
-  .version('2.0.7');
+  .version('2.0.8');
 
-// Add commands
+// Add commands with error handling
 program.addCommand(new InitCommand().getCommand());
 program.addCommand(new TestCommand().getCommand());
 program.addCommand(new ConfigCommand().getCommand());
@@ -27,6 +27,18 @@ program.addCommand(reportCommand);
 program.addCommand(initConfigCommand);
 program.addCommand(scaffoldCommand);
 program.addCommand(createCommand);
+
+// Handle command errors gracefully
+program.exitOverride((err) => {
+  if (err.code === 'commander.help') {
+    process.exit(0);
+  } else if (err.code === 'commander.version') {
+    process.exit(0);
+  } else {
+    console.error(chalk.red('Command failed:'), err.message);
+    process.exit(1);
+  }
+});
 
 // Global error handler
 process.on('uncaughtException', (error) => {
@@ -39,10 +51,23 @@ process.on('unhandledRejection', (reason, promise) => {
   process.exit(1);
 });
 
-// Parse command line arguments
-program.parse(process.argv);
-
-// Show help if no command provided
-if (!process.argv.slice(2).length) {
-  program.outputHelp();
+// Parse command line arguments with error handling
+async function main() {
+  try {
+    await program.parseAsync(process.argv);
+    
+    // Show help if no command provided
+    if (!process.argv.slice(2).length) {
+      program.outputHelp();
+    }
+  } catch (error: any) {
+    console.error(chalk.red('CLI Error:'), error.message);
+    process.exit(1);
+  }
 }
+
+// Run main function
+main().catch((error) => {
+  console.error(chalk.red('Unexpected error:'), error.message);
+  process.exit(1);
+});

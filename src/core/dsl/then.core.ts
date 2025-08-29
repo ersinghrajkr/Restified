@@ -265,7 +265,14 @@ export class ThenStep {
   }
 
   async execute(): Promise<void> {
+    if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+      console.log('🎯 ThenStep.execute() called - starting data capture...');
+    }
+    
     this.context.setAssertions(this.assertions);
+    
+    // 🎯 CRITICAL: Always add data to RestifiedTS HTML reporter context FIRST
+    await this.addToRestifiedReporterContext();
     
     // 📊 Add request/response data to Mochawesome context for enterprise reporting
     await this.addToMochawesomeContext();
@@ -280,8 +287,105 @@ export class ThenStep {
     }
   }
 
+  private async addToRestifiedReporterContext(): Promise<void> {
+    try {
+      if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+        console.log('🎯 ThenStep: addToRestifiedReporterContext() called');
+      }
+      
+      // Get current Mocha test context
+      const currentTest = this.getCurrentMochaTest();
+      if (!currentTest) {
+        if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+          console.log('❌ ThenStep: No current test context found for RestifiedTS reporter');
+        }
+        return;
+      }
+      
+      if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+        console.log('✅ ThenStep: Found test context:', currentTest.title || 'unknown');
+      }
+
+      const requestDetails = this.context.getRequestDetails();
+      
+      // 🚀 IMMEDIATE DATA ATTACHMENT - Critical for RestifiedTS HTML reporter
+      // This ensures data is available synchronously when test completes
+      const requestData = {
+        method: requestDetails.method,
+        url: this.buildFullUrl(requestDetails),
+        headers: this.response.config?.headers || this.context.getRequestHeaders?.() || {},
+        body: requestDetails.body,
+        timestamp: new Date().toISOString()
+      };
+
+      const responseData = {
+        status: this.response.status,
+        statusText: this.response.statusText,
+        headers: this.response.headers,
+        body: this.response.data,
+        responseTime: this.response.responseTime,
+        timestamp: new Date().toISOString()
+      };
+
+      const assertionData = this.assertions.map(a => ({
+        passed: a.passed,
+        message: a.message,
+        expected: a.expected,
+        actual: a.actual
+      }));
+
+      // 🎯 DIRECT ATTACHMENT to test object - ensures immediate availability
+      currentTest.restifiedData = {
+        request: requestData,
+        response: responseData,
+        assertions: assertionData,
+        framework: {
+          name: 'Restified',
+          version: '2.0.0',
+          captureTime: Date.now()
+        }
+      };
+
+      // 🔄 ALSO store globally as backup with immediate flush
+      (global as any).__RESTIFIED_TEST_DATA__ = {
+        testId: currentTest.title || 'unknown',
+        data: currentTest.restifiedData,
+        timestamp: Date.now()
+      };
+      
+      if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+        console.log('🎯 ThenStep: Data attached successfully!');
+        console.log('📊 Request method:', requestData.method);
+        console.log('📊 Request URL:', requestData.url);
+        console.log('📊 Request headers:', JSON.stringify(requestData.headers, null, 2));
+        console.log('📊 Request body:', JSON.stringify(requestData.body, null, 2));
+        console.log('📊 Response status:', responseData.status);
+        console.log('📊 Response headers:', JSON.stringify(responseData.headers, null, 2));
+        console.log('📊 Response body:', JSON.stringify(responseData.body, null, 2));
+        console.log('📊 Assertions count:', assertionData.length);
+      }
+
+      if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+        console.log('🎯 ThenStep: Successfully attached data to RestifiedTS reporter context');
+        console.log('📊 Request data:', JSON.stringify(requestData, null, 2));
+        console.log('📊 Response status:', responseData.status);
+        console.log('📊 Assertions:', assertionData.length);
+      }
+      
+    } catch (error) {
+      // Don't fail the test if context addition fails
+      console.warn('⚠️ Could not add test data to RestifiedTS reporter context:', error.message);
+    }
+  }
+
   private async addToMochawesomeContext(): Promise<void> {
     try {
+      // Skip if using RestifiedTS HTML reporter (to avoid conflicts)
+      if (process.env.MOCHA_REPORTER === './dist/reporting/restified-html-reporter.js' || 
+          process.argv.some(arg => arg.includes('restified-html-reporter'))) {
+        return;
+      }
+      
       // Skip if mochawesome addContext is not available
       if (!addContext) return;
 
@@ -365,33 +469,71 @@ export class ThenStep {
   }
 
   private getCurrentMochaTest(): any {
-    // Access current Mocha test context
+    // Access current Mocha test context using multiple strategies
     try {
-      // Method 1: Use our global context capture from the plugin
-      if ((global as any).__RESTIFIED_TEST_CONTEXT__) {
-        return (global as any).__RESTIFIED_TEST_CONTEXT__;
+      if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+        console.log('🔍 ThenStep: Attempting to find current Mocha test context...');
       }
       
-      // Method 2: Try to get from the current context plugin
-      const contextPlugin = require('../../reporting/mocha-context-plugin');
-      if (contextPlugin && contextPlugin.getCurrentTestContext) {
-        const context = contextPlugin.getCurrentTestContext();
-        if (context) return context;
-      }
-      
-      // Method 3: Fallback to mocha internal access
-      const mocha = require('mocha');
-      if (mocha.Suite && mocha.Suite.current) {
-        const suite = mocha.Suite.current;
-        if (suite.ctx && suite.ctx.currentTest) {
-          return suite.ctx.currentTest;
+      // Method 1: Use global context if set by reporter
+      if ((global as any).__RESTIFIED_CURRENT_TEST_CONTEXT__) {
+        if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+          console.log('✅ Found test context via global __RESTIFIED_CURRENT_TEST_CONTEXT__');
         }
-        // Try the suite's context itself
-        return suite.ctx;
+        return (global as any).__RESTIFIED_CURRENT_TEST_CONTEXT__;
+      }
+      
+      // Method 2: Try to access Mocha's current runnable
+      if (typeof global !== 'undefined' && (global as any).test) {
+        if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+          console.log('✅ Found test context via global.test');
+        }
+        return (global as any).test;
+      }
+      
+      // Method 3: Try accessing through process domain (Node.js specific)
+      try {
+        const processDomain = (process as any).domain;
+        if (processDomain && processDomain.members) {
+          const mochaTest = processDomain.members.find((member: any) => 
+            member && typeof member === 'object' && member.title && member.fullTitle
+          );
+          if (mochaTest) {
+            if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+              console.log('✅ Found test context via process domain');
+            }
+            return mochaTest;
+          }
+        }
+      } catch (domainError) {
+        // Process domain not available
+      }
+      
+      // Method 4: Try Mocha internals (last resort)
+      try {
+        const Mocha = require('mocha');
+        const Runner = Mocha.Runner;
+        
+        // Check if we can access the current runner instance
+        if (Runner && Runner._currentRunner && Runner._currentRunner.currentRunnable) {
+          if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+            console.log('✅ Found test context via Mocha Runner internals');
+          }
+          return Runner._currentRunner.currentRunnable;
+        }
+      } catch (mochaError) {
+        // Mocha internals not available
+      }
+      
+      if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+        console.log('❌ Could not find current test context using any method');
       }
       
       return null;
     } catch (error) {
+      if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+        console.log('❌ Error accessing test context:', error.message);
+      }
       return null;
     }
   }
@@ -405,10 +547,13 @@ export class ThenStep {
       const requestDetails = this.context.getRequestDetails();
       
       // Add request/response data directly to test context
+      // Get actual headers from response config if available, otherwise try context
+      const requestHeaders = this.response.config?.headers || this.context.getRequestHeaders?.() || {};
+      
       currentTest.requestData = {
         method: requestDetails.method,
         url: this.buildFullUrl(requestDetails),
-        headers: this.context.getRequestHeaders?.() || {},
+        headers: requestHeaders,
         body: requestDetails.body,
         timestamp: new Date().toISOString()
       };

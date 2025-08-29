@@ -37,7 +37,7 @@ export { FileUtilities, EncodingUtilities, NetworkUtilities } from './core/utils
 export { UtilityUsageExamples, ExampleCustomPlugin, quickStartExample } from './core/utils/UtilityExamples';
 
 // Reporting
-export { RestifiedHtmlReporter } from './reporting/restified-html-reporter';
+export import RestifiedHtmlReporter = require('./reporting/restified-html-reporter');
 
 // Types
 export * from './RestifiedTypes';
