@@ -526,7 +526,21 @@ export class ThenStep {
       }
       
       if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
-        console.log('❌ Could not find current test context using any method');
+        console.log('❌ Could not find current test context - trying fallback approach');
+      }
+      
+      // 🆕 FALLBACK: Try to create a minimal test context for data capture
+      // This ensures data is still captured even if test context is not found
+      const fallbackContext = this.createFallbackTestContext();
+      if (fallbackContext) {
+        if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+          console.log('✅ Created fallback test context for data capture');
+        }
+        return fallbackContext;
+      }
+      
+      if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+        console.log('❌ All methods failed - data capture may be limited');
       }
       
       return null;
@@ -534,6 +548,35 @@ export class ThenStep {
       if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
         console.log('❌ Error accessing test context:', error.message);
       }
+      return null;
+    }
+  }
+  
+  /**
+   * Creates a fallback test context when the standard Mocha context cannot be found.
+   * This ensures data capture still works even in complex configuration scenarios.
+   */
+  private createFallbackTestContext(): any {
+    try {
+      // Create a minimal test context that the reporter can use
+      const fallbackContext = {
+        title: 'RestifiedTS Test',
+        fullTitle: () => 'RestifiedTS API Test',
+        state: 'passed',
+        duration: 0,
+        _isFallbackContext: true,
+        restifiedData: null,
+        requestData: null,
+        responseData: null,
+        assertions: null
+      };
+      
+      // Store this context globally so the reporter can find it
+      (global as any).__RESTIFIED_FALLBACK_TEST_CONTEXT__ = fallbackContext;
+      
+      return fallbackContext;
+    } catch (error) {
+      console.log('❌ Failed to create fallback test context:', error);
       return null;
     }
   }

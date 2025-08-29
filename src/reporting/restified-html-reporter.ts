@@ -451,6 +451,8 @@ class RestifiedHtmlReporterImpl {
       if (storedData && this.dataCapture) {
         if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
           console.log('🔍 Reporter: Priority 1 - Using enhanced store data');
+          console.log('🔍 Reporter: storedData.request:', JSON.stringify(storedData.request, null, 2));
+          console.log('🔍 Reporter: storedData.response status:', storedData.response?.status);
         }
         result.request = storedData.request;
         result.response = storedData.response;
@@ -497,6 +499,26 @@ class RestifiedHtmlReporterImpl {
         result.response = globalContext.responseData.response;
         result.assertions = globalContext.responseData.assertions;
         result._dataSource = 'global_context';
+      }
+    }
+    
+    // 🆕 NEW Priority 5.5: Check fallback test context (for config-loaded tests)
+    if (!result.request) {
+      const fallbackContext = (global as any).__RESTIFIED_FALLBACK_TEST_CONTEXT__;
+      if (fallbackContext && (fallbackContext.restifiedData || fallbackContext.requestData)) {
+        if (fallbackContext.restifiedData) {
+          result.request = fallbackContext.restifiedData.request;
+          result.response = fallbackContext.restifiedData.response;
+          result.assertions = fallbackContext.restifiedData.assertions;
+        } else {
+          result.request = fallbackContext.requestData;
+          result.response = fallbackContext.responseData;
+          result.assertions = fallbackContext.assertions;
+        }
+        result._dataSource = 'fallback_context';
+        if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+          console.log('🔍 Reporter: Using fallback context data');
+        }
       }
     }
     
@@ -684,16 +706,79 @@ class RestifiedHtmlReporterImpl {
       result.assertions = [];
     }
     
-    // Add metadata about data capture success (improved validation)
+    // Add metadata about data capture success (enhanced validation for all data sources)
     result._captureMetadata = {
-      hasRequest: !!result.request && result.request.url !== 'Not captured' && result.request.method !== 'UNKNOWN',
-      hasResponse: !!result.response && (result.response.status > 0 || result.response.error),
+      hasRequest: this.validateRequestData(result.request, result._dataSource),
+      hasResponse: this.validateResponseData(result.response, result._dataSource),
       hasAssertions: result.assertions.length > 0,
       dataSource: result._dataSource || 'none',
       captureTime: new Date().toISOString()
     };
     
     return result;
+  }
+
+  private static validateRequestData(request: any, dataSource?: string): boolean {
+    if (!request) return false;
+    
+    // Enhanced validation logic for different data sources
+    switch (dataSource) {
+      case 'direct_restified_data':
+      case 'enhanced_store':
+      case 'fallback_context':
+      case 'global_data':
+      case 'context_data':
+      case 'global_restified_backup':
+      case 'direct_context':
+      case 'parent_context':
+        // For these sources, validate that we have meaningful request data
+        return !!(request.method && request.url && 
+                 request.url !== 'Not captured' && 
+                 request.method !== 'UNKNOWN' &&
+                 request.url !== '');
+                 
+      case 'test_property':
+      case 'restified_response':
+      case 'direct_props':
+      case 'global_context':
+      case 'mochawesome_context':
+        // For these sources, be more lenient about validation
+        return !!(request.method && request.url);
+        
+      default:
+        // Original strict validation for legacy sources
+        return !!(request.url !== 'Not captured' && request.method !== 'UNKNOWN');
+    }
+  }
+
+  private static validateResponseData(response: any, dataSource?: string): boolean {
+    if (!response) return false;
+    
+    // Enhanced validation logic for different data sources
+    switch (dataSource) {
+      case 'direct_restified_data':
+      case 'enhanced_store':
+      case 'fallback_context':
+      case 'global_data':
+      case 'context_data':
+      case 'global_restified_backup':
+      case 'direct_context':
+      case 'parent_context':
+        // For these sources, check for any meaningful response data
+        return !!(response.status || response.statusCode || response.error || response.body !== undefined);
+        
+      case 'test_property':
+      case 'restified_response':
+      case 'direct_props':
+      case 'global_context':
+      case 'mochawesome_context':
+        // For these sources, be more lenient about validation
+        return !!(response.status || response.statusCode || response.error);
+        
+      default:
+        // Original validation for legacy sources
+        return !!(response.status > 0 || response.error);
+    }
   }
 
   // Enhanced static methods for backward compatibility
@@ -1213,6 +1298,14 @@ ${hookCode}${error}`;
     for (const test of this.testResults) {
       if (test._captureMetadata && test._captureMetadata.hasRequest && test._captureMetadata.hasResponse) {
         successfulCaptures++;
+      } else if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+        console.log(`🔍 Failed validation for test: ${test.title || 'Unknown'}`);
+        console.log(`   - hasRequest: ${test._captureMetadata?.hasRequest || 'false'}`);
+        console.log(`   - hasResponse: ${test._captureMetadata?.hasResponse || 'false'}`);
+        console.log(`   - dataSource: ${test._captureMetadata?.dataSource || 'none'}`);
+        console.log(`   - request method: ${test.request?.method || 'none'}`);
+        console.log(`   - request url: ${test.request?.url || 'none'}`);
+        console.log(`   - response status: ${test.response?.status || 'none'}`);
       }
     }
     

@@ -19,7 +19,7 @@
     "test:unit": "mocha -r ts-node/register 'tests/unit/**/*.spec.ts'",
     "test:integration": "mocha -r ts-node/register 'tests/integration/**/*.spec.ts'",
     "test:coverage": "nyc mocha -r ts-node/register 'tests/**/*.spec.ts'",
-    "test:examples": "mocha -r ts-node/register 'examples/**/*.ts'",
+    "test:examples": "npm run build && mocha -r ts-node/register 'examples/**/*.ts' --reporter ./dist/reporting/restified-html-reporter.js --timeout 12000",
     
     "// Scale Testing": "",
     "test:quick": "npm run build && mocha -r ts-node/register 'examples/basic/simple-get.ts' --reporter ./dist/reporting/restified-html-reporter.js --timeout 12000 --no-config",
