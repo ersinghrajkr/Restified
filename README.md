@@ -2,20 +2,15 @@
 
 **Production-grade TypeScript testing framework with fluent DSL for REST APIs, GraphQL, WebSocket, and database testing. Features dynamic JSON fixtures, comprehensive variable resolution, and enterprise automation.**
 
-[![npm version](https://badge.fury.io/js/restifiedts.svg)](https://badge.fury.io/js/restifiedts)
-[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Enterprise Ready](https://img.shields.io/badge/Enterprise-Ready-success?style=flat-square)
-](./docs/ENTERPRISE-FEATURES.md)
-
 [
 ](./docs/ENTERPRISE-FEATURES.md)
 
-## 🆕 **What's New in v2.4.0 - Advanced Performance Suite**
+## 🆕 **What's New in v2.3.0 - Advanced Performance Suite**
 
 ### 🚀 **NEW: Advanced Performance Optimization Features**
 
 - **🔄 Request Deduplication**: Eliminate 20-40% of duplicate concurrent requests automatically
-- **💾 Response Caching**: Smart caching with LRU/LFU/FIFO strategies achieving 60-90% cache hit rates  
+- **💾 Response Caching**: Smart caching with LRU/LFU/FIFO strategies achieving 60-90% cache hit rates
 - **📦 Request Batching**: Combine multiple calls for 50-80% reduction in network operations
 - **🌊 Streaming Support**: Handle 10x larger datasets with 90% less memory usage
 - **🔄 Error Recovery**: Graceful degradation with fallback strategies and service level management
@@ -47,17 +42,17 @@ restified.given()
 
 ### 📊 **Performance Impact**
 
-| Feature | Performance Gain | Use Case |
-|---------|-----------------|----------|
-| **Request Deduplication** | 20-40% fewer calls | Concurrent identical requests |
-| **Response Caching** | 60-90% cache hits | Repeated API calls |
-| **Request Batching** | 50-80% fewer requests | Multiple similar operations |
-| **Streaming Support** | 90% memory reduction | Large dataset processing |
+| Feature                         | Performance Gain      | Use Case                      |
+| ------------------------------- | --------------------- | ----------------------------- |
+| **Request Deduplication** | 20-40% fewer calls    | Concurrent identical requests |
+| **Response Caching**      | 60-90% cache hits     | Repeated API calls            |
+| **Request Batching**      | 50-80% fewer requests | Multiple similar operations   |
+| **Streaming Support**     | 90% memory reduction  | Large dataset processing      |
 
 ### 🔧 **Previous Improvements (v2.0.8)**
 
 - **🚀 Virtual Scrolling**: Revolutionary HTML reports handling 3000+ tests
-- **⚡ Smart Data Loading**: On-demand loading prevents browser freeze  
+- **⚡ Smart Data Loading**: On-demand loading prevents browser freeze
 - **📊 Performance Indicators**: Visual feedback for optimization status
 - **💾 Zero Data Loss**: All test data preserved with responsive UI
 
@@ -766,12 +761,12 @@ await restified.given()
 
 #### **⚙️ Sleep Method Features**
 
-✅ **Three Flexible Approaches**: Independent, WhenStep, and ThenStep  
-✅ **Accumulative WhenStep**: Multiple `.sleep()` calls add up before HTTP request  
-✅ **Both Aliases**: `.sleep()` and `.wait()` available in all contexts  
-✅ **Fluent API**: Maintains clean method chaining  
-✅ **Non-Breaking**: Doesn't affect existing RestifiedTS functionality  
-✅ **Type-Safe**: Full TypeScript support with proper return types  
+✅ **Three Flexible Approaches**: Independent, WhenStep, and ThenStep
+✅ **Accumulative WhenStep**: Multiple `.sleep()` calls add up before HTTP request
+✅ **Both Aliases**: `.sleep()` and `.wait()` available in all contexts
+✅ **Fluent API**: Maintains clean method chaining
+✅ **Non-Breaking**: Doesn't affect existing RestifiedTS functionality
+✅ **Type-Safe**: Full TypeScript support with proper return types
 ✅ **Use Case Optimized**: Perfect for rate limiting, async processing, and user simulation
 
 ### **🔄 Smart Retry System with Exponential Backoff**
@@ -811,7 +806,7 @@ await restified.given()
     maxDelay: 30000,        // Cap maximum delay at 30s
     retryOnNetworkError: true,
     retryOnTimeout: true,
-    
+  
     // Custom retry condition
     retryCondition: (error, attempt) => {
       // Retry on specific conditions
@@ -820,12 +815,12 @@ await restified.given()
       if (attempt < 3 && error.response?.status >= 500) return true;
       return false;
     },
-    
+  
     // Retry callback for logging/monitoring
     onRetry: (error, attempt, delay) => {
       console.log(`🔄 Retry attempt ${attempt} after ${delay}ms: ${error.message}`);
     },
-    
+  
     // Max attempts callback
     onMaxAttemptsReached: (error, attempts) => {
       console.error(`❌ Failed after ${attempts} attempts: ${error.message}`);
@@ -888,7 +883,7 @@ describe('API Reliability Testing', () => {
   it('should handle transient failures gracefully', async () => {
     // Simulate multiple API calls with potential failures
     const requests = [];
-    
+  
     for (let i = 0; i < 10; i++) {
       const request = restified.given()
         .retry({
@@ -902,12 +897,12 @@ describe('API Reliability Testing', () => {
         .execute()
       .then(response => response.statusCode(200))
       .catch(error => console.log(`Request ${i} failed: ${error.message}`));
-      
+    
       requests.push(request);
     }
-    
+  
     await Promise.all(requests);
-    
+  
     // Analyze retry statistics
     const retryStats = restified.getRetryStats();
     console.log('📊 Retry Statistics:');
@@ -916,14 +911,14 @@ describe('API Reliability Testing', () => {
     console.log(`   Total retry attempts: ${retryStats.totalRetryAttempts}`);
     console.log(`   Success after retry: ${retryStats.successAfterRetry}`);
     console.log(`   Failed after max retries: ${retryStats.failedAfterMaxRetries}`);
-    
+  
     // Get performance metrics and recommendations
     const metrics = restified.getRetryMetrics();
     console.log('📈 Performance Metrics:');
     console.log(`   Retry rate: ${metrics.retryRate.toFixed(2)}%`);
     console.log(`   Success rate after retry: ${metrics.successRateAfterRetry.toFixed(2)}%`);
     console.log(`   Average retry delay: ${metrics.averageRetryDelay.toFixed(2)}ms`);
-    
+  
     // Get actionable recommendations
     const recommendations = restified.getRetryRecommendations();
     console.log('💡 Recommendations:');
@@ -995,11 +990,11 @@ describe('Microservices Retry Strategies', () => {
     if (userResponse.status === 'fulfilled') {
       userResponse.value.statusCode(200);
     }
-    
+  
     if (paymentResponse.status === 'fulfilled') {
       paymentResponse.value.statusCode(200);
     }
-    
+  
     // Analytics is optional - don't fail test if it fails
     if (analyticsResponse.status === 'rejected') {
       console.log('⚠️ Analytics service unavailable, continuing...');
@@ -1012,7 +1007,7 @@ describe('Circuit Breaker Preparation', () => {
   it('should collect failure data for circuit breaker decisions', async () => {
     const failingEndpoint = '/always-fails';
     const attempts = 10;
-    
+  
     for (let i = 0; i < attempts; i++) {
       try {
         await restified.given()
@@ -1029,12 +1024,12 @@ describe('Circuit Breaker Preparation', () => {
         // Expected failures
       }
     }
-    
+  
     const retryStats = restified.getRetryStats();
     const failureRate = (retryStats.failedAfterMaxRetries / retryStats.totalRequests) * 100;
-    
+  
     console.log(`🔴 Failure rate for ${failingEndpoint}: ${failureRate.toFixed(2)}%`);
-    
+  
     // Circuit breaker decision logic
     if (failureRate > 50) {
       console.log('🚨 Circuit breaker should OPEN - too many failures');
@@ -1069,15 +1064,15 @@ interface RetryConfig {
 
 #### **🎯 Retry Benefits & Features**
 
-✅ **Intelligent Backoff**: Exponential backoff with jitter prevents thundering herd  
-✅ **Configurable Conditions**: Retry on specific status codes, network errors, or custom conditions  
-✅ **Comprehensive Monitoring**: Detailed statistics and performance metrics  
-✅ **Global Configuration**: Set retry behavior once, apply everywhere  
-✅ **Per-Request Override**: Fine-tune retry behavior for specific endpoints  
-✅ **Enterprise Ready**: Circuit breaker preparation, failure analysis, recommendations  
-✅ **Callback Support**: Custom logging, monitoring, and alerting integration  
-✅ **Network Resilience**: Handle timeouts, connection failures, and transient errors  
-✅ **Performance Optimized**: Jitter and delay caps prevent resource exhaustion  
+✅ **Intelligent Backoff**: Exponential backoff with jitter prevents thundering herd
+✅ **Configurable Conditions**: Retry on specific status codes, network errors, or custom conditions
+✅ **Comprehensive Monitoring**: Detailed statistics and performance metrics
+✅ **Global Configuration**: Set retry behavior once, apply everywhere
+✅ **Per-Request Override**: Fine-tune retry behavior for specific endpoints
+✅ **Enterprise Ready**: Circuit breaker preparation, failure analysis, recommendations
+✅ **Callback Support**: Custom logging, monitoring, and alerting integration
+✅ **Network Resilience**: Handle timeouts, connection failures, and transient errors
+✅ **Performance Optimized**: Jitter and delay caps prevent resource exhaustion
 ✅ **Backward Compatible**: Works seamlessly with all existing RestifiedTS features
 
 ### **🛡️ Circuit Breaker Pattern for Network Resilience**
@@ -1118,12 +1113,12 @@ await restified.given()
     requestVolumeThreshold: 5,
     resetTimeoutDuration: 30000,
     responseTimeThreshold: 5000,     // Consider slow responses as failures
-    
+  
     // Circuit state change callbacks for monitoring
     onCircuitOpen: async (circuitId, stats) => {
       console.error(`🚨 CIRCUIT OPENED: ${circuitId}`);
       console.error(`Failure count: ${stats.failureCount}/${stats.totalRequests}`);
-      
+    
       // Send alert to monitoring system
       await sendAlert('circuit-breaker', {
         event: 'OPEN',
@@ -1132,10 +1127,10 @@ await restified.given()
         timestamp: new Date().toISOString()
       });
     },
-    
+  
     onCircuitClose: async (circuitId, stats) => {
       console.log(`✅ CIRCUIT CLOSED: ${circuitId} - Service recovered`);
-      
+    
       // Send recovery notification
       await sendAlert('circuit-breaker', {
         event: 'CLOSED',
@@ -1143,7 +1138,7 @@ await restified.given()
         timestamp: new Date().toISOString()
       });
     },
-    
+  
     onCircuitHalfOpen: async (circuitId, stats) => {
       console.log(`🔄 CIRCUIT HALF-OPEN: ${circuitId} - Testing recovery`);
     }
@@ -1208,10 +1203,10 @@ describe('Circuit Breaker Monitoring', () => {
   it('should track circuit states and provide metrics', async () => {
     // Reset circuit breaker stats for clean test
     restified.resetCircuitBreakerStats();
-    
+  
     // Simulate multiple requests to trigger circuit breaker behavior
     const requests = [];
-    
+  
     for (let i = 0; i < 20; i++) {
       const request = restified.given()
         .circuitBreaker({
@@ -1229,27 +1224,27 @@ describe('Circuit Breaker Monitoring', () => {
         }
         return null;
       });
-      
+    
       requests.push(request);
     }
-    
+  
     await Promise.allSettled(requests);
-    
+  
     // Analyze all circuits
     const allCircuits = restified.getAllCircuitIds();
     console.log(`📊 Monitoring ${allCircuits.length} circuits:`);
-    
+  
     allCircuits.forEach(circuitId => {
       const state = restified.getCircuitState(circuitId);
       const stats = restified.getCircuitBreakerStats(circuitId);
       const metrics = restified.getCircuitBreakerMetrics(circuitId);
-      
+    
       console.log(`\n🔌 Circuit: ${circuitId}`);
       console.log(`   State: ${state}`);
       console.log(`   Requests: ${stats.totalRequests}`);
       console.log(`   Failures: ${stats.failureCount}`);
       console.log(`   Success Rate: ${((stats.successCount / stats.totalRequests) * 100).toFixed(2)}%`);
-      
+    
       if (metrics) {
         console.log(`   Availability: ${metrics.availabilityPercentage.toFixed(2)}%`);
         console.log(`   P95 Response Time: ${metrics.responseTimeP95}ms`);
@@ -1260,11 +1255,11 @@ describe('Circuit Breaker Monitoring', () => {
 
   it('should handle circuit breaker state transitions', async () => {
     const circuitId = 'GET:https://test-api.example.com';
-    
+  
     // Force circuit open for testing
     restified.forceOpenCircuit(circuitId);
     expect(restified.getCircuitState(circuitId)).to.equal('OPEN');
-    
+  
     // Test fast-fail behavior
     try {
       await restified.given()
@@ -1272,14 +1267,14 @@ describe('Circuit Breaker Monitoring', () => {
       .when()
         .get('/test')
         .execute();
-      
+    
       // Should not reach here
       throw new Error('Expected circuit breaker to prevent request');
     } catch (error) {
       expect(error.circuitBreakerState).to.equal('OPEN');
       expect(error.message).to.include('Circuit breaker');
     }
-    
+  
     // Force circuit closed for recovery testing
     restified.forceCloseCircuit(circuitId);
     expect(restified.getCircuitState(circuitId)).to.equal('CLOSED');
@@ -1421,12 +1416,12 @@ describe('Circuit Breaker + Retry Integration', () => {
 });
 ```
 
-✅ **Automatic Failure Detection**: Monitors request success/failure rates automatically  
-✅ **Fast Failure**: Prevents wasting resources on failed services  
-✅ **Self-Healing**: Automatically tests recovery and resumes normal operation  
-✅ **Configurable Thresholds**: Customize failure detection for different service types  
-✅ **Comprehensive Monitoring**: Real-time circuit state and performance metrics  
-✅ **Retry Integration**: Works seamlessly with retry system for layered resilience  
+✅ **Automatic Failure Detection**: Monitors request success/failure rates automatically
+✅ **Fast Failure**: Prevents wasting resources on failed services
+✅ **Self-Healing**: Automatically tests recovery and resumes normal operation
+✅ **Configurable Thresholds**: Customize failure detection for different service types
+✅ **Comprehensive Monitoring**: Real-time circuit state and performance metrics
+✅ **Retry Integration**: Works seamlessly with retry system for layered resilience
 ✅ **Enterprise Ready**: Perfect for microservices, distributed systems, and high availability scenarios
 
 ### **🧠 Request Timeout Intelligence - Context-Aware Timeouts**
@@ -1468,7 +1463,7 @@ describe('Adaptive Timeout Learning', () => {
   it('should adapt timeouts based on performance history', async () => {
     // Reset stats for clean test
     restified.resetTimeoutStats();
-    
+  
     // Make multiple requests to the same endpoint
     for (let i = 0; i < 20; i++) {
       await restified.given()
@@ -1484,7 +1479,7 @@ describe('Adaptive Timeout Learning', () => {
         .execute()
       .then(response => response.statusCode(200));
     }
-    
+  
     // Get learned timeout metrics
     const metrics = restified.getTimeoutMetrics('GET:https://api.example.com/users');
     console.log(`📊 Timeout Intelligence Analytics:`);
@@ -1530,10 +1525,10 @@ const restifiedWithTimeouts = new Restified({
 const [userResponse, searchResponse, analyticsResponse] = await Promise.all([
   restifiedWithTimeouts.given().baseURL('https://api.example.com')
     .when().get('/users').execute(),          // ~5s timeout (single item)
-    
+  
   restifiedWithTimeouts.given().baseURL('https://api.example.com')
     .when().get('/search?q=term').execute(),  // ~20s timeout (search)
-    
+  
   restifiedWithTimeouts.given().baseURL('https://api.example.com')
     .when().get('/analytics/report').execute() // ~45s timeout (analytics)
 ]);
@@ -1547,11 +1542,11 @@ describe('Timeout Intelligence Analytics', () => {
   it('should provide actionable timeout recommendations', async () => {
     // Simulate various endpoint usage patterns
     await simulateEndpointTraffic();
-    
+  
     // Get comprehensive timeout statistics
     const allStats = restified.getTimeoutStats();
     console.log(`📈 Monitoring ${allStats.size} endpoints:`);
-    
+  
     allStats.forEach((stats, endpointId) => {
       console.log(`\n🔗 Endpoint: ${endpointId}`);
       console.log(`   Requests: ${stats.totalRequests}`);
@@ -1562,11 +1557,11 @@ describe('Timeout Intelligence Analytics', () => {
       console.log(`   Fastest: ${stats.fastestResponseTime}ms`);
       console.log(`   Slowest: ${stats.slowestResponseTime}ms`);
     });
-    
+  
     // Get intelligent recommendations
     const recommendations = restified.getTimeoutRecommendations();
     console.log(`\n💡 Timeout Optimization Recommendations:`);
-    
+  
     recommendations.forEach((rec, index) => {
       console.log(`\n${index + 1}. ${rec.endpointId}`);
       console.log(`   Action: ${rec.action.toUpperCase()} timeout`);
@@ -1585,7 +1580,7 @@ describe('Timeout Intelligence Analytics', () => {
       { path: '/analytics/dashboard', count: 15 },
       { path: '/export/csv', count: 10 }
     ];
-    
+  
     for (const endpoint of endpoints) {
       for (let i = 0; i < endpoint.count; i++) {
         try {
@@ -1619,7 +1614,7 @@ describe('Custom Timeout Patterns', () => {
       multiplier: 3.0,
       description: 'ML inference endpoints need more time'
     });
-    
+  
     restified.addTimeoutPattern({
       name: 'blockchain',
       pattern: /\/blockchain\/|\/crypto\/|\/wallet/i,
@@ -1628,7 +1623,7 @@ describe('Custom Timeout Patterns', () => {
       multiplier: 2.0,
       description: 'Blockchain operations can be slow'
     });
-    
+  
     restified.addTimeoutPattern({
       name: 'video-processing',
       pattern: /\/video\/process|\/media\/convert/i,
@@ -1637,7 +1632,7 @@ describe('Custom Timeout Patterns', () => {
       multiplier: 4.0,
       description: 'Video processing takes significant time'
     });
-    
+  
     // Test endpoints now automatically get appropriate timeouts
     const mlResponse = await restified.given()
       .timeoutIntelligence({ enabled: true })
@@ -1645,7 +1640,7 @@ describe('Custom Timeout Patterns', () => {
     .when()
       .post('/ml/predict', { data: 'model input' }) // Gets 45s * 3.0 = 135s timeout
       .execute();
-      
+    
     const videoResponse = await restified.given()
       .timeoutIntelligence({ enabled: true })
       .baseURL('https://media-api.company.com')
@@ -1663,13 +1658,13 @@ describe('Custom Timeout Patterns', () => {
 describe('Performance Trend Monitoring', () => {
   it('should track performance trends over time', async () => {
     const endpointId = 'GET:https://api.example.com/users';
-    
+  
     // Simulate performance over time
     await simulatePerformanceTrend(endpointId);
-    
+  
     // Get detailed metrics
     const metrics = restified.getTimeoutMetrics(endpointId);
-    
+  
     console.log(`📈 Performance Analysis for ${endpointId}:`);
     console.log(`   Current Timeout: ${metrics.currentTimeout}ms`);
     console.log(`   Recommended Timeout: ${metrics.recommendedTimeout}ms`);
@@ -1677,7 +1672,7 @@ describe('Performance Trend Monitoring', () => {
     console.log(`   Confidence Level: ${(metrics.confidenceLevel * 100).toFixed(1)}%`);
     console.log(`   Performance Trend: ${metrics.performanceTrend.toUpperCase()}`);
     console.log(`   Optimization Count: ${metrics.optimizationCount}`);
-    
+  
     // Apply recommendations if confidence is high
     if (metrics.confidenceLevel > 0.8) {
       console.log(`✅ High confidence - applying recommended timeout`);
@@ -1685,7 +1680,7 @@ describe('Performance Trend Monitoring', () => {
     } else {
       console.log(`⚠️ Low confidence - keeping current timeout`);
     }
-    
+  
     // Verify current timeout
     const currentTimeout = restified.getCurrentTimeout('GET', '/users');
     console.log(`🔧 Active timeout: ${currentTimeout}ms`);
@@ -1698,7 +1693,7 @@ describe('Performance Trend Monitoring', () => {
       { duration: 15, baseTime: 800 },  // Slow phase  
       { duration: 20, baseTime: 300 }   // Recovery phase
     ];
-    
+  
     for (const phase of phases) {
       for (let i = 0; i < phase.duration; i++) {
         const responseTime = phase.baseTime + (Math.random() * 200);
@@ -1747,13 +1742,13 @@ describe('Integrated Resilience Stack', () => {
 });
 ```
 
-✅ **Pattern Recognition**: 12+ built-in endpoint patterns (CRUD, search, analytics, uploads, etc.)  
-✅ **Adaptive Learning**: Learns from response times and optimizes timeouts automatically  
-✅ **Performance Tracking**: P50, P95, P99 response time analysis with trend detection  
-✅ **Confidence-Based**: Only applies learned timeouts when confidence threshold is met  
-✅ **Timeout Recommendations**: Provides actionable insights for timeout optimization  
-✅ **Custom Patterns**: Add business-specific endpoint patterns for specialized timeouts  
-✅ **Global Configuration**: Set intelligent defaults for entire application  
+✅ **Pattern Recognition**: 12+ built-in endpoint patterns (CRUD, search, analytics, uploads, etc.)
+✅ **Adaptive Learning**: Learns from response times and optimizes timeouts automatically
+✅ **Performance Tracking**: P50, P95, P99 response time analysis with trend detection
+✅ **Confidence-Based**: Only applies learned timeouts when confidence threshold is met
+✅ **Timeout Recommendations**: Provides actionable insights for timeout optimization
+✅ **Custom Patterns**: Add business-specific endpoint patterns for specialized timeouts
+✅ **Global Configuration**: Set intelligent defaults for entire application
 ✅ **Integration Ready**: Works seamlessly with retry system and circuit breaker
 
 ### **🚀 HTTP Connection Pooling & Performance**
@@ -1885,7 +1880,7 @@ describe('Load Testing with Connection Pooling', () => {
 
   it('should handle 100 concurrent requests efficiently', async () => {
     const startTime = Date.now();
-    
+  
     // Create array of concurrent requests
     const requests = Array.from({ length: concurrentRequests }, (_, i) =>
       restified.given()
@@ -1902,17 +1897,17 @@ describe('Load Testing with Connection Pooling', () => {
 
     // Execute all requests concurrently
     await Promise.all(requests);
-    
+  
     const totalTime = Date.now() - startTime;
     const stats = restified.getConnectionStats();
     const metrics = restified.getConnectionMetrics();
-    
+  
     console.log(`⚡ Load Test Results:`);
     console.log(`   ${concurrentRequests} requests in ${totalTime}ms`);
     console.log(`   Average: ${(totalTime/concurrentRequests).toFixed(2)}ms per request`);
     console.log(`   Connection reuse: ${metrics.averageConnectionReuse.toFixed(2)}x`);
     console.log(`   Cache hit ratio: ${metrics.cacheHitRatio.toFixed(2)}%`);
-    
+  
     // Verify connection pooling effectiveness
     expect(metrics.cacheHitRatio).to.be.greaterThan(50); // At least 50% reuse
     expect(stats.totalRequests).to.equal(concurrentRequests);
@@ -1976,7 +1971,7 @@ describe('E-commerce Checkout with Optimized Connections', () => {
     // Verify connection efficiency
     const metrics = restified.getConnectionMetrics();
     console.log(`🛒 Checkout completed with ${metrics.averageConnectionReuse.toFixed(2)}x connection reuse`);
-    
+  
     // Connection pooling should show significant reuse
     expect(metrics.cacheHitRatio).to.be.greaterThan(60); // 60%+ connection reuse
   });
@@ -2032,15 +2027,15 @@ interface ConnectionPoolConfig {
 
 #### **🎯 Performance Benefits**
 
-✅ **20-40% Faster Requests**: Connection reuse eliminates handshake overhead  
-✅ **HTTP/2 Multiplexing**: Multiple requests over single connection  
-✅ **Reduced Latency**: TCP_NODELAY and optimized socket handling  
-✅ **Better Resource Usage**: Controlled connection limits prevent exhaustion  
-✅ **Automatic Compression**: Gzip/Brotli/Deflate support built-in  
-✅ **TLS Optimization**: Session reuse for HTTPS connections  
-✅ **Statistics & Monitoring**: Built-in performance metrics  
-✅ **Enterprise Ready**: Handles thousands of concurrent requests efficiently  
-✅ **Backward Compatible**: Works with all existing RestifiedTS features  
+✅ **20-40% Faster Requests**: Connection reuse eliminates handshake overhead
+✅ **HTTP/2 Multiplexing**: Multiple requests over single connection
+✅ **Reduced Latency**: TCP_NODELAY and optimized socket handling
+✅ **Better Resource Usage**: Controlled connection limits prevent exhaustion
+✅ **Automatic Compression**: Gzip/Brotli/Deflate support built-in
+✅ **TLS Optimization**: Session reuse for HTTPS connections
+✅ **Statistics & Monitoring**: Built-in performance metrics
+✅ **Enterprise Ready**: Handles thousands of concurrent requests efficiently
+✅ **Backward Compatible**: Works with all existing RestifiedTS features
 ✅ **Zero Configuration**: Sensible defaults, optional optimization
 
 ### **🔄 Enterprise Utility System**
@@ -2321,13 +2316,13 @@ const config: RestifiedConfig = {
     endpoint: '/auth/login',         // Login endpoint
     method: 'POST',                  // HTTP method for auth request
     client: 'api',                   // Which client to use for auth request
-    
+  
     // Login credentials (from environment variables for security)
     credentials: {
       email: process.env.TEST_USERNAME || 'test@example.com',
       password: process.env.TEST_PASSWORD || 'password123'
     },
-    
+  
     // Token extraction from authentication response
     extractors: {
       token: '$.access_token',       // Extract token from response
@@ -2335,11 +2330,11 @@ const config: RestifiedConfig = {
       userId: '$.user.id',           // Extract user ID
       roles: '$.roles'               // Extract user roles
     },
-    
+  
     // Automatically apply token to specified clients
     autoApplyToClients: ['api', 'userService', 'orderService'], // Apply to specific clients
     authHeaderName: 'Authorization', // Header name for auth token
-    
+  
     // Fallback for CI/CD environments
     fallback: {
       enabled: true,
@@ -2373,6 +2368,7 @@ export default config;
 RestifiedTS provides automatic authentication with token extraction and multi-client application:
 
 #### **1. Initial Authentication Request**
+
 ```typescript
 // Framework automatically makes this request during setup:
 const authResponse = await restified
@@ -2390,6 +2386,7 @@ const authResponse = await restified
 ```
 
 #### **2. Token Extraction**
+
 ```typescript
 // Framework extracts tokens using JSONPath extractors:
 await authResponse
@@ -2401,6 +2398,7 @@ await authResponse
 ```
 
 #### **3. Automatic Token Application**
+
 ```typescript
 // When autoApplyToClients is configured:
 const authToken = restified.getVariable('globalAuthToken');
@@ -2411,6 +2409,7 @@ restified.addAuthTokenToClients(['api', 'userService', 'orderService'], authToke
 ```
 
 #### **4. Usage in Tests**
+
 ```typescript
 // Tests can use authenticated clients without additional setup:
 await restified
@@ -2424,6 +2423,7 @@ await restified
 ```
 
 **Environment Variables for Secure Credentials:**
+
 ```bash
 # .env file - Choose appropriate variables for your API
 
@@ -2451,6 +2451,7 @@ AUTH_ENDPOINT=/auth/login              # Your actual login endpoint
 ```
 
 **Multiple Authentication Examples:**
+
 ```typescript
 // Email/password configuration
 authentication: {

@@ -1,4 +1,4 @@
-import { restified } from './src/index';
+import { restified } from '../src/index';
 
 /**
  * 🏢 ENTERPRISE SCALE TEST SUITE
