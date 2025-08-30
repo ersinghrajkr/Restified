@@ -11,12 +11,15 @@ import { initConfigCommand } from './commands/init-config';
 import { scaffoldCommand } from './commands/scaffold';
 import { createCommand } from './commands/create';
 
+// Read version dynamically from package.json
+const packageJson = require('../../package.json');
+
 const program = new Command();
 
 program
   .name('restifiedts')
   .description('Restified - Production-grade TypeScript API testing framework')
-  .version('2.1.1');
+  .version(packageJson.version);
 
 // Add commands with error handling
 program.addCommand(new InitCommand().getCommand());
