@@ -1,4 +1,4 @@
-import { AuthConfig, RequestConfig } from '../../RestifiedTypes';
+import { AuthConfig, RequestConfig, ConnectionPoolConfig } from '../../RestifiedTypes';
 
 export class GivenStep {
   private config: RequestConfig = {};
@@ -169,6 +169,28 @@ export class GivenStep {
     if (clientConfig) {
       this.config = { ...this.config, ...clientConfig };
     }
+    return this;
+  }
+
+  /**
+   * Configure HTTP connection pooling for performance optimization
+   * @param {ConnectionPoolConfig} config - Connection pool configuration
+   * @returns {this} GivenStep instance for method chaining
+   * @example
+   * ```typescript
+   * restified.given()
+   *   .connectionPool({
+   *     keepAlive: true,
+   *     maxSockets: 50,
+   *     http2: true
+   *   })
+   *   .baseURL('https://api.example.com')
+   * .when()
+   *   .get('/users')
+   * ```
+   */
+  connectionPool(config: ConnectionPoolConfig): this {
+    this.config.connectionPool = config;
     return this;
   }
 

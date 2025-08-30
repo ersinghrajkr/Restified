@@ -1,11 +1,17 @@
 import axios, { AxiosResponse } from 'axios';
 import { RequestConfig, HttpResponse } from '../../RestifiedTypes';
+import { ConnectionManager } from '../network/ConnectionManager';
 
 export class WhenStep {
+  private connectionManager: ConnectionManager;
+
   constructor(
     private context: any,
     private config: RequestConfig
-  ) {}
+  ) {
+    // Initialize connection manager with config if provided
+    this.connectionManager = new ConnectionManager(this.config.connectionPool);
+  }
 
   /**
    * Executes a GET HTTP request
@@ -267,12 +273,26 @@ export class WhenStep {
   }
 
   private buildAxiosConfig(): any {
+    const baseURL = this.config.baseURL || this.context.getConfig().baseURL || '';
+    
+    // Start with base config
     const config: any = {
       timeout: this.config.timeout || 30000,
       headers: { ...this.config.headers },
       validateStatus: () => true // Accept all status codes
     };
 
+    // Apply connection pooling configuration
+    const poolConfig = this.connectionManager.getAxiosConfig(baseURL);
+    Object.assign(config, poolConfig);
+    
+    // Merge headers (connection pool headers + user headers)
+    config.headers = {
+      ...poolConfig.headers,
+      ...config.headers
+    };
+
+    // Apply authentication (must be after connection pooling to preserve auth headers)
     if (this.config.auth) {
       this.applyAuthentication(config);
     }

@@ -24,6 +24,41 @@ export interface RequestConfig {
   retries?: number;
   /** Delay between retries in milliseconds (default: 1000) */
   retryDelay?: number;
+  /** Connection pool configuration for performance optimization */
+  connectionPool?: ConnectionPoolConfig;
+}
+
+/**
+ * Connection pool configuration for HTTP performance optimization
+ * @interface ConnectionPoolConfig
+ * @example
+ * ```typescript
+ * const poolConfig: ConnectionPoolConfig = {
+ *   keepAlive: true,
+ *   maxSockets: 50,
+ *   maxFreeSockets: 10,
+ *   http2: true,
+ *   timeout: 30000
+ * };
+ * ```
+ */
+export interface ConnectionPoolConfig {
+  /** Enable connection keep-alive for connection reuse (default: true) */
+  keepAlive?: boolean;
+  /** Maximum number of concurrent connections per host (default: 50) */
+  maxSockets?: number;
+  /** Maximum number of idle connections to keep open (default: 10) */
+  maxFreeSockets?: number;
+  /** Connection timeout in milliseconds (default: 30000) */
+  timeout?: number;
+  /** Enable HTTP/2 support where available (default: true) */
+  http2?: boolean;
+  /** Keep-alive timeout in milliseconds (default: 60000) */
+  keepAliveMsecs?: number;
+  /** Enable TCP_NODELAY for reduced latency (default: true) */
+  noDelay?: boolean;
+  /** Initial delay for keep-alive probes in milliseconds (default: 1000) */
+  keepAliveInitialDelay?: number;
 }
 
 /**

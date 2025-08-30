@@ -23,6 +23,10 @@ export { ConfigManager, configManager } from './core/config/config.core';
 export { GraphQLClient } from './core/clients/GraphQLClient';
 export { WebSocketClient } from './core/clients/WebSocketClient';
 export { DatabaseManager } from './core/database/DatabaseManager';
+
+// Network and performance
+export { ConnectionManager, globalConnectionManager } from './core/network/ConnectionManager';
+export type { ConnectionPoolConfig, ConnectionStats } from './core/network/ConnectionManager';
 export { DatabaseClient } from './core/database/DatabaseClient';
 export { PostgreSQLClient } from './core/database/PostgreSQLClient';
 export { MongoDBClient } from './core/database/MongoDBClient';

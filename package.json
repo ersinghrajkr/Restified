@@ -1,6 +1,6 @@
 {
   "name": "restifiedts",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "Production-grade TypeScript API testing framework with fluent DSL",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

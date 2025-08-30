@@ -13,6 +13,7 @@ import { DatabaseConfig } from './database/DatabaseClient';
 import { UtilityManager } from './utils/UtilityManager';
 import { CustomUtilityPlugin, UtilityResult } from './utils/UtilityTypes';
 import { gracefulConfigManager } from './config/GracefulConfigManager';
+import { globalConnectionManager, ConnectionStats } from './network/ConnectionManager';
 import RestifiedHtmlReporter = require('../reporting/restified-html-reporter');
 import { RestifiedConfig, RequestConfig, HttpResponse, AssertionResult, AuthConfig } from '../RestifiedTypes';
 
@@ -763,6 +764,40 @@ export class Restified {
    */
   async wait(ms: number): Promise<void> {
     return this.sleep(ms);
+  }
+
+  /**
+   * Get HTTP connection pool statistics for performance monitoring
+   * @returns {ConnectionStats} Connection pool statistics
+   * @example
+   * ```typescript
+   * const stats = restified.getConnectionStats();
+   * console.log(`Cache hit ratio: ${stats.cacheHitRatio}%`);
+   * console.log(`Active connections: ${stats.activeConnections}`);
+   * ```
+   */
+  getConnectionStats(): ConnectionStats {
+    return globalConnectionManager.getStats();
+  }
+
+  /**
+   * Get connection pool performance metrics
+   * @returns Performance metrics including cache hit ratio and HTTP/2 usage
+   */
+  getConnectionMetrics(): {
+    cacheHitRatio: number;
+    averageConnectionReuse: number;
+    http2Usage: number;
+    poolEfficiency: number;
+  } {
+    return globalConnectionManager.getPerformanceMetrics();
+  }
+
+  /**
+   * Reset connection pool statistics
+   */
+  resetConnectionStats(): void {
+    globalConnectionManager.resetStats();
   }
 
   // Enhanced cleanup method
