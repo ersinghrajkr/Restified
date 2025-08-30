@@ -728,6 +728,43 @@ export class Restified {
     return gracefulConfigManager.getMissingFeatures();
   }
 
+  /**
+   * Sleep/wait utility - can be used anywhere in test flow
+   * @param {number} ms - Milliseconds to sleep (e.g., 1000 = 1 second)
+   * @returns {Promise<void>} Promise that resolves after the delay
+   * @example
+   * ```typescript
+   * // Between when and then
+   * const response = await restified.given()
+   *   .baseURL('https://api.example.com')
+   * .when()
+   *   .get('/users')
+   *   .execute();
+   * 
+   * await restified.sleep(2000);  // Wait 2 seconds
+   * 
+   * response.then()
+   *   .statusCode(200);
+   * 
+   * // Between multiple requests
+   * await restified.given().when().get('/first').execute();
+   * await restified.sleep(5000);  // Wait 5 seconds between requests
+   * await restified.given().when().get('/second').execute();
+   * ```
+   */
+  async sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Alias for sleep() method
+   * @param {number} ms - Milliseconds to wait
+   * @returns {Promise<void>} Promise that resolves after the delay
+   */
+  async wait(ms: number): Promise<void> {
+    return this.sleep(ms);
+  }
+
   // Enhanced cleanup method
   async cleanup(): Promise<void> {
     // Disconnect WebSocket clients

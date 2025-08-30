@@ -107,7 +107,46 @@ export class WhenStep {
     return this;
   }
 
+  /**
+   * Sleep/wait before executing the HTTP request
+   * @param {number} ms - Milliseconds to sleep (e.g., 1000 = 1 second)
+   * @returns {this} WhenStep instance for method chaining
+   * @example
+   * ```typescript
+   * restified.given()
+   *   .baseURL('https://api.example.com')
+   * .when()
+   *   .sleep(2000)  // Wait 2 seconds before request
+   *   .get('/users')
+   *   .execute()
+   * .then()
+   *   .statusCode(200);
+   * ```
+   */
+  sleep(ms: number): this {
+    if (!this.context.sleepDuration) {
+      this.context.sleepDuration = 0;
+    }
+    this.context.sleepDuration += ms;
+    return this;
+  }
+
+  /**
+   * Alias for sleep() method
+   * @param {number} ms - Milliseconds to wait
+   * @returns {this} WhenStep instance for method chaining
+   */
+  wait(ms: number): this {
+    return this.sleep(ms);
+  }
+
   async execute(): Promise<import('./then.core').ThenStep> {
+    // Handle sleep if specified
+    if (this.context.sleepDuration && this.context.sleepDuration > 0) {
+      await new Promise(resolve => setTimeout(resolve, this.context.sleepDuration));
+      this.context.sleepDuration = 0; // Reset after use
+    }
+    
     const startTime = Date.now();
     
     try {

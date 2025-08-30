@@ -10,7 +10,7 @@
 [
 ](./docs/ENTERPRISE-FEATURES.md)
 
-## 🆕 **What's New in v2.0.5**
+## 🆕 **What's New in v2.0.8**
 
 - **🚀 Performance Optimization**: Revolutionary virtual scrolling for HTML reports with 3000+ tests
 - **⚡ Smart Data Loading**: On-demand loading of request/response/assertion details to prevent browser freeze
@@ -39,6 +39,7 @@ restifiedts scaffold -n "MyAPI" -u "https://api.example.com"
 ```
 
 ### **🔄 Key Changes & Security Improvements:**
+
 - ✅ `scaffold` command creates folder with project name (not generic "tests" folder)
 - ✅ Enhanced ConfigLoader with enterprise validation and graceful fallbacks
 - ✅ 50+ new environment variables for complete customization
@@ -46,7 +47,7 @@ restifiedts scaffold -n "MyAPI" -u "https://api.example.com"
 - 🆕 **Security-hardened CLI**: All commands now validate inputs for safety
 - 🆕 **Path traversal protection**: Prevents `../../../` directory attacks
 - 🆕 **Command injection prevention**: Blocks malicious shell commands
-- 🆕 **AI-powered initialization**: Enhanced `init` command with intelligent recommendations
+- 🆕 **AI-powered initialization**: Enhanced `init --interactive` command with intelligent recommendations (replaces `create --interactive`)
 - 🆕 **Async file operations**: Non-blocking file operations for better performance
 
 ---
@@ -73,16 +74,20 @@ RestifiedTS is inspired by Java's RestAssured but built for the modern TypeScrip
 npm install -g restifiedts
 ```
 
-### Scaffold Enterprise Test Suite
+### Initialize Your First Project
 
 ```bash
-# Scaffold complete enterprise test suite with performance optimization!
+# 🆕 RECOMMENDED: Interactive wizard with AI-powered analysis
+restifiedts init --interactive
+# Follow the prompts for intelligent project setup with API analysis
+
+# OR: Traditional scaffolding approach
 restifiedts scaffold -n "MyAPI" -t "api,auth,database,performance" -u "https://api.example.com"
 
-# Navigate to generated suite
+# Navigate to generated project
 cd ./MyAPI
 
-# Install dependencies and run
+# Install dependencies and run tests
 npm install
 npm test
 ```
@@ -142,13 +147,28 @@ clients: {
 ```typescript
 // Authenticate once, use everywhere
 authentication: {
-  endpoint: '/oauth/token',
-  autoApplyToClients: 'all',  // Auth token added to all clients
+  endpoint: '/auth/login',
+  method: 'POST',
+  client: 'api',
+  
+  // Login credentials
+  credentials: {
+    email: process.env.API_USERNAME || 'demo@example.com',
+    password: process.env.API_PASSWORD || 'demo123'
+    // Or use username/password if your API requires it
+  },
+  
+  // Extract data from auth response
   extractors: {
     token: '$.access_token',
-    roles: '$.roles',
-    permissions: '$.permissions'
-  }
+    userEmail: '$.user.email',
+    userId: '$.user.id',
+    roles: '$.user.roles',
+    permissions: '$.user.permissions'
+  },
+  
+  // Apply to all clients automatically
+  autoApplyToClients: ['api', 'userService', 'orderService']
 }
 ```
 
@@ -391,16 +411,16 @@ await restified.disconnectAllDatabases();
 
 ### **📋 Supported Database Types**
 
-| Database | Status | Package Required | Features |
-|----------|--------|------------------|----------|
-| **PostgreSQL** | ✅ Complete | `pg` | Connection pooling, transactions, schemas, performance monitoring |
-| **MySQL/MariaDB** | ✅ Complete | `mysql2` | Connection pooling, SSL, multiple statements, bulk operations |
-| **MongoDB** | ✅ Complete | `mongodb` | Replica sets, aggregation, GridFS, transactions |
-| **SQLite** | ✅ Complete | `sqlite3` | In-memory/file, WAL mode, custom functions, backup/restore |
-| **Redis** | ✅ Complete | `redis` | Clustering, pipelines, key patterns, data types |
-| **SQL Server** | ✅ Complete | `mssql` | Windows auth, encryption, bulk operations, stored procedures |
-| **Oracle** | 🚧 Planned | `oracledb` | Enterprise features, wallet support |
-| **Elasticsearch** | 🚧 Planned | `@elastic/elasticsearch` | Search operations, indexing |
+| Database                | Status      | Package Required           | Features                                                          |
+| ----------------------- | ----------- | -------------------------- | ----------------------------------------------------------------- |
+| **PostgreSQL**    | ✅ Complete | `pg`                     | Connection pooling, transactions, schemas, performance monitoring |
+| **MySQL/MariaDB** | ✅ Complete | `mysql2`                 | Connection pooling, SSL, multiple statements, bulk operations     |
+| **MongoDB**       | ✅ Complete | `mongodb`                | Replica sets, aggregation, GridFS, transactions                   |
+| **SQLite**        | ✅ Complete | `sqlite3`                | In-memory/file, WAL mode, custom functions, backup/restore        |
+| **Redis**         | ✅ Complete | `redis`                  | Clustering, pipelines, key patterns, data types                   |
+| **SQL Server**    | ✅ Complete | `mssql`                  | Windows auth, encryption, bulk operations, stored procedures      |
+| **Oracle**        | 🚧 Planned  | `oracledb`               | Enterprise features, wallet support                               |
+| **Elasticsearch** | 🚧 Planned  | `@elastic/elasticsearch` | Search operations, indexing                                       |
 
 ### **📦 Installation**
 
@@ -532,6 +552,148 @@ await response
   .execute();
 ```
 
+### **⏱️ Sleep/Wait Methods**
+
+RestifiedTS provides **three flexible approaches** for adding delays in your API tests:
+
+#### **🔗 1. Independent Sleep/Wait (Between DSL Calls)**
+
+```typescript
+// Between requests or anywhere in test flow
+const response1 = await restified.given()
+  .baseURL('https://api.example.com')
+.when()
+  .get('/users/1')
+  .execute();
+
+response1.statusCode(200);
+
+// Independent sleep - not part of DSL chain
+await restified.sleep(2000);  // 2 seconds
+await restified.wait(1000);   // 1 second (alias for sleep)
+
+// Continue with next request
+const response2 = await restified.given()
+  .baseURL('https://api.example.com')
+.when()
+  .get('/users/2')
+  .execute();
+
+response2.statusCode(200);
+```
+
+#### **⚡ 2. WhenStep Sleep (Before HTTP Request)**
+
+```typescript
+// Sleep accumulates in WhenStep before making HTTP request
+const response = await restified.given()
+  .baseURL('https://api.example.com')
+.when()
+  .sleep(2000)   // 2 seconds
+  .wait(1000)    // + 1 second  
+  .sleep(2000)   // + 2 seconds = 5 seconds total
+  .get('/users/delayed')  // HTTP request happens after 5-second delay
+  .execute();
+
+response.statusCode(200);
+```
+
+#### **✨ 3. ThenStep Sleep (After Assertions)**
+
+```typescript
+// Sleep after assertions for timing-sensitive scenarios
+const response = await restified.given()
+  .baseURL('https://api.example.com')
+.when()
+  .get('/users/process')
+  .execute();
+
+// Sleep after assertions (useful for async processing)
+await response
+  .statusCode(202)  // Processing started
+  .jsonPath('$.status', 'processing')
+  .sleep(5000);     // Wait 5 seconds for processing to complete
+
+// Follow up with status check
+const statusResponse = await restified.given()
+  .baseURL('https://api.example.com')
+.when()
+  .get('/users/process/status')
+  .execute();
+
+statusResponse.statusCode(200).jsonPath('$.status', 'completed');
+```
+
+#### **🚀 Real-World Use Cases**
+
+```typescript
+// Rate limiting compliance
+for (let i = 1; i <= 3; i++) {
+  await restified.given()
+    .baseURL('https://api.example.com')
+  .when()
+    .get(`/users/${i}`)
+    .execute()
+  .then()
+    .statusCode(200);
+  
+  // Rate limit: 1 request per second
+  if (i < 3) await restified.sleep(1000);
+}
+
+// Async processing workflow
+await restified.given()
+  .baseURL('https://api.example.com')
+.when()
+  .post('/jobs/start', { task: 'process-data' })
+  .execute()
+.then()
+  .statusCode(202);
+
+// Wait for processing
+await restified.sleep(3000);
+
+// Check job status
+await restified.given()
+  .baseURL('https://api.example.com')
+.when()
+  .get('/jobs/status')
+  .execute()
+.then()
+  .statusCode(200)
+  .jsonPath('$.status', 'completed');
+
+// Simulating user interaction delays
+await restified.given()
+  .baseURL('https://api.example.com')
+.when()
+  .sleep(1500)  // Simulate user thinking time
+  .post('/cart/add', { productId: 123 })
+  .execute()
+.then()
+  .statusCode(201);
+
+await restified.sleep(2000);  // User reviews cart
+
+await restified.given()
+  .baseURL('https://api.example.com')
+.when()
+  .post('/checkout/start')
+  .execute()
+.then()
+  .statusCode(200);
+```
+
+#### **⚙️ Sleep Method Features**
+
+✅ **Three Flexible Approaches**: Independent, WhenStep, and ThenStep  
+✅ **Accumulative WhenStep**: Multiple `.sleep()` calls add up before HTTP request  
+✅ **Both Aliases**: `.sleep()` and `.wait()` available in all contexts  
+✅ **Fluent API**: Maintains clean method chaining  
+✅ **Non-Breaking**: Doesn't affect existing RestifiedTS functionality  
+✅ **Type-Safe**: Full TypeScript support with proper return types  
+✅ **Use Case Optimized**: Perfect for rate limiting, async processing, and user simulation
+
 ### **🔄 Enterprise Utility System**
 
 **130+ Built-in Utilities** across 12 categories with complete user-defined formatting:
@@ -662,48 +824,67 @@ RestifiedTS follows a layered enterprise architecture:
 
 ### **🎯 Complete CLI Commands Reference**
 
-RestifiedTS provides a comprehensive CLI for project scaffolding and management:
+RestifiedTS provides a comprehensive CLI with enhanced security and enterprise features:
 
 ```bash
-# 🚀 Scaffold new test project (RECOMMENDED)
+# 🚀 Initialize new project with AI-powered wizard (RECOMMENDED)
+restifiedts init --interactive               # Interactive wizard with smart recommendations
+restifiedts init MyProject --quick           # Quick setup with minimal questions
+restifiedts init --analyze-only --url "https://api.example.com"  # API analysis only
+
+# 🏗️ Scaffold enterprise test suite
 restifiedts scaffold -n "MyAPI" -t "api,auth,database" -u "https://api.example.com"
+restifiedts scaffold -n "Enterprise" -c "enterprise" -t "api,auth,performance,security"
 
-# 🔧 Initialize existing project  
-restifiedts init MyProject --template enterprise
-
-# 📊 Run tests with custom options
-restifiedts test --pattern "tests/**/*.ts" --reporter spec
+# 📊 Run tests with enhanced options
+restifiedts test --pattern "tests/**/*.ts" --reporter "restified-html"
+restifiedts test --reporter mocha --timeout 10000
 
 # ⚙️ Configuration management
-restifiedts config init --force              # Initialize config file
-restifiedts config show                      # Show current config
+restifiedts config show                      # Display current configuration
+restifiedts config validate                  # Validate configuration files
+restifiedts config health                    # Run configuration health check
 
-# 🔨 Generate specific components
+# 🔨 Generate components and templates
 restifiedts generate test UserAPI            # Generate test file
-restifiedts generate config                  # Generate config
-restifiedts generate auth LoginTest          # Generate auth test
+restifiedts generate config                  # Generate configuration file
+restifiedts generate auth                    # Generate authentication tests
 
-# 📈 Report generation
-restifiedts report --open --clean            # Generate and open HTML report
+# 📈 Advanced reporting
+restifiedts report --open --format html      # Generate and open HTML report
+restifiedts report --format json --output ./reports  # JSON format with custom output
 
-# 🔧 Initialize configuration only
-restifiedts init-config --type ts --force    # Generate restified.config.ts
+# 🛠️ Legacy support (maintained for backward compatibility)
+restifiedts init-config --force              # Generate restified.config.ts only
+restifiedts create --interactive             # Alias for init --interactive
 ```
 
-### **🚀 Enterprise Test Suite Scaffolding**
+### **🚀 Enhanced Project Initialization & Scaffolding**
 
-The `scaffold` command creates production-ready test suites:
+**Recommended Approach - Interactive Initialization:**
 
 ```bash
-# Scaffold complete enterprise-grade test suite
+# 🆕 AI-powered interactive wizard (RECOMMENDED)
+restifiedts init --interactive
+# Features: API analysis, smart recommendations, enterprise templates
+
+# Quick setup for experienced users
+restifiedts init MyProject --quick --url "https://api.example.com"
+```
+
+**Traditional Scaffolding:**
+
+```bash
+# Enterprise-grade test suite scaffolding
 restifiedts scaffold -n "MyCompanyAPI" -t "api,auth,performance,security" -u "https://api.mycompany.com"
 
-# Options:
-# -n, --name     Test suite name (default: "MyAPI") 
-# -t, --types    Test types: api,auth,database,performance,security,graphql,websocket
-# -u, --url      Base API URL 
-# -o, --output   Output directory (defaults to project name)
-# -f, --force    Overwrite existing files
+# Available Options:
+# -n, --name <name>          Test suite name (default: "MyAPI") 
+# -t, --types <types>        Test types: api,auth,database,performance,security,graphql,websocket
+# -u, --url <url>           Base API URL (default: jsonplaceholder.typicode.com)
+# -o, --output <dir>        Output directory (defaults to project name)
+# -c, --complexity <level>  Configuration complexity: minimal|standard|enterprise
+# -f, --force               Overwrite existing files
 ```
 
 ### **What Gets Generated**
@@ -724,17 +905,30 @@ your-api-tests/
 └── 📁 reports/               # Generated after tests
 ```
 
+### **🛡️ CLI Security Enhancements**
+
+RestifiedTS CLI includes enterprise-grade security features:
+
+- **🔒 Path Traversal Protection**: Prevents `../../../` directory attacks
+- **🛡️ Command Injection Prevention**: Blocks malicious shell commands
+- **✅ Input Validation**: Comprehensive validation for all user inputs
+- **🔐 Safe File Operations**: Async operations with proper error handling
+- **📋 Security Auditing**: Built-in security validation for project setup
+
 ### **Ready to Use**
 
 ```bash
+# ✅ Initialize with interactive wizard (RECOMMENDED)
+restifiedts init --interactive
+
 # ✅ Scaffold enterprise test suites
-restifiedts scaffold
+restifiedts scaffold -n "MyAPI" -t "api,auth"
 
 # ✅ Run comprehensive examples with enterprise config
 npm run examples
 
 # ✅ Generate detailed HTML reports  
-npm run report
+npm run report:restified
 
 # ✅ Build and development
 npm run build
@@ -772,16 +966,37 @@ const config: RestifiedConfig = {
     }
   },
 
-  // Enterprise authentication
+  // Complete authentication configuration with credentials
   authentication: {
-    endpoint: '/oauth/token',
-    method: 'POST',
-    client: 'auth',
-    autoApplyToClients: 'all',
+    // Authentication endpoint and client
+    endpoint: '/auth/login',         // Login endpoint
+    method: 'POST',                  // HTTP method for auth request
+    client: 'api',                   // Which client to use for auth request
+    
+    // Login credentials (from environment variables for security)
+    credentials: {
+      email: process.env.TEST_USERNAME || 'test@example.com',
+      password: process.env.TEST_PASSWORD || 'password123'
+    },
+    
+    // Token extraction from authentication response
     extractors: {
-      token: '$.access_token',
-      roles: '$.roles',
-      tenantId: '$.tenant_id'
+      token: '$.access_token',       // Extract token from response
+      userEmail: '$.user.email',     // Extract user email  
+      userId: '$.user.id',           // Extract user ID
+      roles: '$.roles'               // Extract user roles
+    },
+    
+    // Automatically apply token to specified clients
+    autoApplyToClients: ['api', 'userService', 'orderService'], // Apply to specific clients
+    authHeaderName: 'Authorization', // Header name for auth token
+    
+    // Fallback for CI/CD environments
+    fallback: {
+      enabled: true,
+      token: process.env.FALLBACK_TOKEN || 'ci-cd-token',
+      userEmail: process.env.FALLBACK_EMAIL || 'ci-cd@company.com',
+      userId: parseInt(process.env.FALLBACK_USER_ID || '999')
     }
   },
 
@@ -802,6 +1017,133 @@ const config: RestifiedConfig = {
 };
 
 export default config;
+```
+
+### **🔐 How Authentication Works**
+
+RestifiedTS provides automatic authentication with token extraction and multi-client application:
+
+#### **1. Initial Authentication Request**
+```typescript
+// Framework automatically makes this request during setup:
+const authResponse = await restified
+  .given()
+    .useClient('api')                    // Uses specified auth client
+    .header('Content-Type', 'application/json')
+  .when()
+    .post('/auth/login', {               // POST to auth endpoint
+      // Request body created from credentials config:
+      // Email/password: { email: 'user@example.com', password: 'pass123' }
+      // Username/password: { username: 'john_doe', password: 'pass123' }
+      // Custom fields: { employeeId: 'EMP001', pin: '1234' }
+    })
+    .execute();
+```
+
+#### **2. Token Extraction**
+```typescript
+// Framework extracts tokens using JSONPath extractors:
+await authResponse
+  .statusCode(200)
+  .extract('$.access_token', 'globalAuthToken')    // Saves as global variable
+  .extract('$.user.email', 'globalUserEmail')      // Saves user info
+  .extract('$.user.id', 'globalUserId')            // Saves user ID
+  .execute();
+```
+
+#### **3. Automatic Token Application**
+```typescript
+// When autoApplyToClients is configured:
+const authToken = restified.getVariable('globalAuthToken');
+restified.addAuthTokenToClients(['api', 'userService', 'orderService'], authToken, 'Authorization');
+
+// Now specified client requests automatically include:
+// Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+#### **4. Usage in Tests**
+```typescript
+// Tests can use authenticated clients without additional setup:
+await restified
+  .given()
+    .useClient('api')         // Already has auth token applied
+  .when()
+    .get('/users/profile')    // Request includes Authorization header
+  .then()
+    .status(200)
+    .execute();
+```
+
+**Environment Variables for Secure Credentials:**
+```bash
+# .env file - Choose appropriate variables for your API
+
+# Option 1: Email/password authentication
+API_USERNAME=admin@company.com
+API_PASSWORD=secure_password_123
+
+# Option 2: Username/password authentication  
+API_USERNAME=john_smith
+API_PASSWORD=secure_password_123
+
+# Option 3: Employee/corporate authentication
+EMPLOYEE_ID=EMP001
+PIN=1234
+DEPARTMENT=IT
+
+# Option 4: OAuth2 client credentials
+CLIENT_ID=your-client-id-here
+CLIENT_SECRET=your-client-secret-here
+
+# Fallback and configuration
+FALLBACK_TOKEN=ci-cd-backup-token
+AUTH_APPLY_TO_CLIENTS=api,userService  # Or 'all'
+AUTH_ENDPOINT=/auth/login              # Your actual login endpoint
+```
+
+**Multiple Authentication Examples:**
+```typescript
+// Email/password configuration
+authentication: {
+  endpoint: '/auth/login',
+  credentials: {
+    email: process.env.API_USERNAME,
+    password: process.env.API_PASSWORD
+  },
+  extractors: { token: '$.access_token' }
+}
+
+// Username/password configuration  
+authentication: {
+  endpoint: '/api/authenticate',
+  credentials: {
+    username: process.env.API_USERNAME,
+    password: process.env.API_PASSWORD
+  },
+  extractors: { token: '$.jwt' }
+}
+
+// Corporate/employee authentication
+authentication: {
+  endpoint: '/corp/auth',
+  credentials: {
+    employeeId: process.env.EMPLOYEE_ID,
+    pin: process.env.PIN,
+    department: process.env.DEPARTMENT
+  },
+  extractors: { token: '$.authToken' }
+}
+
+// OAuth2 client credentials
+authentication: {
+  endpoint: '/auth/oauth/token',
+  credentials: {
+    clientId: process.env.CLIENT_ID,
+    clientSecret: process.env.CLIENT_SECRET,
+    grantType: 'client_credentials'
+  },
+  extractors: { token: '$.access_token' }
+}
 ```
 
 ---

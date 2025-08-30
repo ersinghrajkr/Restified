@@ -5,11 +5,15 @@
  * without throwing errors, providing warnings and fallbacks instead.
  */
 
+import chalk from 'chalk';
+
 export interface GracefulConfig {
   enableWarnings: boolean;
   enableFallbacks: boolean;
   strictMode: boolean;
   silentFailures: string[]; // List of features to fail silently
+  showHealthReport: boolean; // Whether to show the health report
+  healthReportLevel: 'full' | 'summary' | 'errors-only'; // Level of detail in health report
 }
 
 export class GracefulConfigManager {
@@ -23,7 +27,9 @@ export class GracefulConfigManager {
       enableWarnings: process.env.RESTIFIED_ENABLE_WARNINGS !== 'false',
       enableFallbacks: process.env.RESTIFIED_ENABLE_FALLBACKS !== 'false', 
       strictMode: process.env.RESTIFIED_STRICT_MODE === 'true',
-      silentFailures: (process.env.RESTIFIED_SILENT_FAILURES || '').split(',').filter(Boolean)
+      silentFailures: (process.env.RESTIFIED_SILENT_FAILURES || '').split(',').filter(Boolean),
+      showHealthReport: process.env.RESTIFIED_SHOW_HEALTH_REPORT !== 'false',
+      healthReportLevel: (process.env.RESTIFIED_HEALTH_REPORT_LEVEL as any) || 'full'
     };
   }
 
@@ -163,30 +169,108 @@ export class GracefulConfigManager {
   }
 
   /**
-   * Print configuration health report
+   * Print configuration health report with enhanced formatting
    */
   printHealthReport(): void {
-    console.log('\n🏥 RestifiedTS Configuration Health Report');
-    console.log('==========================================');
-    
-    if (this.warnings.length === 0 && this.missingFeatures.size === 0) {
-      console.log('✅ All configurations and dependencies are available');
+    // Check if health report is disabled
+    if (!this.gracefulConfig.showHealthReport) {
       return;
     }
 
-    if (this.warnings.length > 0) {
-      console.log('\n⚠️ Configuration Warnings:');
-      this.warnings.forEach(warning => console.log(`   - ${warning}`));
+    // For errors-only mode, only show if there are actual errors
+    if (this.gracefulConfig.healthReportLevel === 'errors-only' && this.missingFeatures.size === 0) {
+      return;
+    }
+
+    console.log(chalk.cyan('\n🏥 RestifiedTS Configuration Health Report'));
+    console.log(chalk.cyan('=========================================='));
+    
+    if (this.warnings.length === 0 && this.missingFeatures.size === 0) {
+      console.log(chalk.green('✅ All configurations and dependencies are available'));
+      console.log(chalk.green('🎉 Your RestifiedTS setup is perfect!'));
+      console.log(chalk.cyan('==========================================\n'));
+      return;
+    }
+
+    // For summary mode, show condensed information
+    if (this.gracefulConfig.healthReportLevel === 'summary') {
+      const totalIssues = this.warnings.length + this.missingFeatures.size;
+      console.log(chalk.yellow(`⚠️ Found ${totalIssues} configuration notice(s)`));
+      
+      if (this.missingFeatures.size > 0) {
+        console.log(chalk.red(`❌ ${this.missingFeatures.size} missing feature(s)`));
+      }
+      
+      if (this.warnings.length > 0) {
+        const optionalWarnings = this.warnings.filter(w => w.includes('optional') || w.includes('database') || w.includes('package'));
+        console.log(chalk.yellow(`⚠️ ${optionalWarnings.length} optional feature(s) unavailable`));
+      }
+      
+      console.log(chalk.gray('💡 Set RESTIFIED_HEALTH_REPORT_LEVEL=full for detailed information'));
+      console.log(chalk.cyan('==========================================\n'));
+      return;
+    }
+
+    // Categorize warnings for better display
+    const databaseWarnings = this.warnings.filter(w => w.includes('database') || w.includes('DB') || w.includes('pg') || w.includes('mysql') || w.includes('mongodb') || w.includes('redis') || w.includes('sqlite'));
+    const packageWarnings = this.warnings.filter(w => w.includes('package') || w.includes('npm install'));
+    const configWarnings = this.warnings.filter(w => !databaseWarnings.includes(w) && !packageWarnings.includes(w));
+
+    if (packageWarnings.length > 0) {
+      console.log(chalk.yellow('\n📦 Optional Package Dependencies:'));
+      packageWarnings.forEach(warning => {
+        if (warning.includes('npm install')) {
+          const packageName = warning.match(/npm install (\w+)/)?.[1];
+          console.log(chalk.yellow(`   ⚠️  ${warning}`));
+          console.log(chalk.gray(`      💡 This is optional - install only if you need this feature`));
+        } else {
+          console.log(chalk.yellow(`   ⚠️  ${warning}`));
+        }
+      });
+    }
+
+    if (databaseWarnings.length > 0) {
+      console.log(chalk.blue('\n🗄️ Database Configuration:'));
+      databaseWarnings.forEach(warning => {
+        console.log(chalk.blue(`   ℹ️  ${warning}`));
+        console.log(chalk.gray(`      💡 Database features are optional for API testing`));
+      });
+    }
+
+    if (configWarnings.length > 0) {
+      console.log(chalk.magenta('\n⚙️ Configuration Issues:'));
+      configWarnings.forEach(warning => {
+        console.log(chalk.magenta(`   ⚠️  ${warning}`));
+      });
     }
 
     if (this.missingFeatures.size > 0) {
-      console.log('\n❌ Missing Features:');
-      this.missingFeatures.forEach(feature => console.log(`   - ${feature}`));
+      console.log(chalk.red('\n❌ Missing Features:'));
+      this.missingFeatures.forEach(feature => {
+        console.log(chalk.red(`   ❌ ${feature}`));
+        
+        // Provide specific guidance for common features
+        if (feature.includes('PostgreSQL')) {
+          console.log(chalk.gray(`      💡 Install with: npm install pg @types/pg`));
+        } else if (feature.includes('MySQL')) {
+          console.log(chalk.gray(`      💡 Install with: npm install mysql2 @types/mysql2`));
+        } else if (feature.includes('MongoDB')) {
+          console.log(chalk.gray(`      💡 Install with: npm install mongodb @types/mongodb`));
+        } else if (feature.includes('Redis')) {
+          console.log(chalk.gray(`      💡 Install with: npm install redis @types/redis`));
+        } else if (feature.includes('SQLite')) {
+          console.log(chalk.gray(`      💡 Install with: npm install sqlite3 @types/sqlite3`));
+        }
+      });
     }
 
-    console.log('\n💡 Note: RestifiedTS will continue to work with available features.');
-    console.log('   Set RESTIFIED_STRICT_MODE=true to make missing features throw errors.');
-    console.log('==========================================\n');
+    console.log(chalk.gray('\n💡 RestifiedTS Guidance:'));
+    console.log(chalk.gray('   • RestifiedTS will continue to work with available features'));
+    console.log(chalk.gray('   • Database packages are optional for API testing'));
+    console.log(chalk.gray('   • Set RESTIFIED_STRICT_MODE=true to make missing features throw errors'));
+    console.log(chalk.gray('   • Use restified.config.ts to customize your setup'));
+    
+    console.log(chalk.cyan('==========================================\n'));
   }
 
   /**

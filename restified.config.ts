@@ -1,21 +1,39 @@
 /**
- * 🏢 ENTERPRISE RESTIFIED CONFIGURATION
+ * 🚀 RESTIFIED CONFIGURATION
  * 
- * This configuration file provides enterprise-grade API testing capabilities
- * with support for:
- * - Multi-environment deployment
- * - Role-based access control
- * - Service mesh integration
- * - Comprehensive monitoring
- * - Security compliance
- * - Scalable architecture
+ * This configuration file supports both simple and enterprise-grade API testing:
+ * 
+ * 🎯 FOR QUICK START:
+ * - Configure 'clients' section with your API endpoints
+ * - Set environment variables in .env file for security
+ * - Run tests with: npm test
+ * 
+ * 🏢 FOR ENTERPRISE USAGE:
+ * - Multi-environment deployment support
+ * - Automatic authentication with token management
+ * - Service mesh integration and health checks
+ * - Comprehensive monitoring and compliance
+ * - Database integration and state management
+ * - Performance and security testing
+ * 
+ * 📋 QUICK SETUP CHECKLIST:
+ * 1. Update 'clients.api.baseURL' with your API URL
+ * 2. Configure authentication credentials in .env
+ * 3. Enable health checks for your endpoints
+ * 4. Uncomment optional features as needed
  */
 
 // Import proper RestifiedConfig type from RestifiedTypes
 import { RestifiedConfig } from './src/RestifiedTypes';
 
 const config: RestifiedConfig = {
-  // 🌍 Enterprise Environment Configuration
+  // ========================================
+  // 🚀 QUICK START - Basic Configuration
+  // ========================================
+  // For new users: Uncomment and modify the sections below as needed
+  // For CLI generation: These sections are automatically configured
+  
+  // 🌍 Environment Configuration
   environment: {
     name: process.env.TEST_ENV || 'development',
     timeout: parseInt(process.env.TIMEOUT || '30000'),
@@ -28,7 +46,7 @@ const config: RestifiedConfig = {
     deployment: process.env.DEPLOYMENT_ID || 'latest'
   },
 
-  // 🏗️ Enterprise HTTP Clients Configuration
+  // 🏗️ HTTP Clients Configuration (Required)
   clients: {
     // Primary API Gateway (Production/Staging)
     api: {
@@ -60,7 +78,13 @@ const config: RestifiedConfig = {
     }
   },
 
-  // 🌐 Enterprise Global Headers (applied to ALL requests)
+  // ========================================
+  // 🏢 ENTERPRISE FEATURES - Advanced Configuration
+  // ========================================
+  // These sections provide enterprise-grade capabilities
+  // Can be simplified or commented out for basic usage
+  
+  // 🌐 Global Headers (Applied to ALL requests)
   globalHeaders: {
     // Enterprise identification
     'X-Test-Suite': process.env.TEST_SUITE_NAME || 'enterprise-api-tests',
@@ -88,19 +112,40 @@ const config: RestifiedConfig = {
 
   // 🔐 Enterprise Authentication Configuration
   authentication: {
-    // Enterprise SSO/OAuth2 endpoint
-    endpoint: process.env.AUTH_ENDPOINT || '/users/1',
+    // Real authentication endpoint (not user profile endpoint)
+    endpoint: process.env.AUTH_ENDPOINT || '/auth/login',
     method: 'POST' as const,
-    client: 'auth',
+    client: 'api', // Use main API client for auth (change to 'auth' if separate auth service)
     
-    // Enterprise token extraction (JWT/OAuth2)
+    // Login credentials (secure with environment variables)
+    // Choose the appropriate credential type for your API:
+    credentials: {
+      // Option 1: Email/password login
+      email: process.env.API_USERNAME || 'demo@example.com',
+      password: process.env.API_PASSWORD || 'demo123',
+      
+      // Option 2: Username/password login (comment out email above)
+      // username: process.env.API_USERNAME || 'demo_user',
+      // password: process.env.API_PASSWORD || 'demo123',
+      
+      // Option 3: OAuth2 client credentials
+      // clientId: process.env.CLIENT_ID || 'your-client-id',
+      // clientSecret: process.env.CLIENT_SECRET || 'your-client-secret',
+      
+      // Option 4: Custom fields for specialized APIs
+      // employeeId: process.env.EMPLOYEE_ID,
+      // pin: process.env.PIN,
+      // department: process.env.DEPARTMENT || 'IT'
+    },
+    
+    // Enterprise token extraction from authentication response (not user profile)
     extractors: {
-      token: process.env.TOKEN_JSONPATH || '$.name',
-      userEmail: process.env.USER_EMAIL_JSONPATH || '$.email',
-      userId: process.env.USER_ID_JSONPATH || '$.id',
-      // Enterprise-specific extractions
-      roles: '$.roles',
-      permissions: '$.permissions',
+      token: process.env.TOKEN_JSONPATH || '$.access_token',      // JWT/OAuth2 token
+      userEmail: process.env.USER_EMAIL_JSONPATH || '$.user.email', // User info from auth response
+      userId: process.env.USER_ID_JSONPATH || '$.user.id',
+      // Enterprise-specific extractions from auth response
+      roles: '$.user.roles',
+      permissions: '$.user.permissions',
       tenantId: '$.tenant_id',
       organizationId: '$.organization_id',
       sessionId: '$.session_id',
@@ -301,54 +346,36 @@ const config: RestifiedConfig = {
     teamsNotification: process.env.TEAMS_NOTIFICATION === 'true'
   },
 
-  // 🏥 Enterprise Health Checks & Service Discovery - TEMPORARILY DISABLED FOR REPORTER TESTING
-  healthChecks: [] as any[], // Disabled until reporter integration is complete
-  /*
+  // 🏥 Health Checks & Service Discovery
   healthChecks: [
     {
-      name: 'API Gateway',
+      name: 'API Gateway Health',
       client: 'api',
-      endpoint: process.env.HEALTH_CHECK_ENDPOINT || '/posts/1',
+      endpoint: process.env.HEALTH_CHECK_ENDPOINT || '/posts/1', // Simple endpoint for basic health check
       expectedStatus: 200,
       timeout: 5000,
       critical: true
     },
-    {
-      name: 'User Service',
-      client: 'userService',
-      endpoint: '/users/1',
-      expectedStatus: 200,
-      timeout: 3000,
-      critical: true
-    },
-    {
-      name: 'Order Service',
-      client: 'orderService',
-      endpoint: '/status',
-      expectedStatus: 200,
-      timeout: 5000,
-      critical: false
-    },
-    {
-      name: 'Payment Gateway',
-      client: 'paymentGateway',
-      endpoint: '/health',
-      expectedStatus: 200,
-      timeout: 10000,
-      critical: true
-    },
+    // Uncomment additional health checks as needed:
+    /*
     {
       name: 'Authentication Service',
       client: 'auth',
-      endpoint: '/auth/health',
+      endpoint: '/health',
       expectedStatus: 200,
       timeout: 3000,
       critical: true
     }
+    */
   ],
-  */
 
-  // 🗄️ Enterprise Database Configuration
+  // ========================================
+  // 🗄️ OPTIONAL FEATURES - Advanced Integrations
+  // ========================================
+  // CLI Note: These sections are commented out by default
+  // Uncomment and configure as needed for your project
+  
+  // Database Configuration (Uncomment to enable)
   // databases: {
   //   // Primary Database (PostgreSQL)
   //   primary: {

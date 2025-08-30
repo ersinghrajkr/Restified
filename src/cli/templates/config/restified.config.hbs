@@ -1,14 +1,23 @@
 /**
- * 🏢 ENTERPRISE RESTIFIED CONFIGURATION
+ * 🚀 {{projectName}} API TEST CONFIGURATION
  * 
- * This configuration file provides enterprise-grade API testing capabilities
- * with support for:
- * - Multi-environment deployment
- * - Role-based access control
- * - Comprehensive logging and reporting
- * - Database integration and validation
- * - Performance and security testing
- * - Multi-client microservices architecture
+ * This configuration file supports both simple and enterprise-grade API testing:
+ * 
+ * 🎯 FOR QUICK START:
+ * - Update baseURL below with your actual API endpoint
+ * - Set environment variables in .env file for security
+ * - Run tests with: npm test
+ * 
+ * 🏢 FOR ENTERPRISE USAGE:
+ * - Uncomment advanced sections as needed
+ * - Configure authentication credentials securely
+ * - Enable health checks and monitoring
+ * 
+ * 📋 QUICK SETUP CHECKLIST:
+ * 1. Update 'clients.api.baseURL' with your API URL
+ * 2. Configure authentication credentials in .env
+ * 3. Enable health checks for your endpoints
+ * 4. Run npm test to verify setup
  */
 
 import { RestifiedConfig } from 'restifiedts';
@@ -95,15 +104,11 @@ const config: RestifiedConfig = {
     
     // Login credentials (secure via environment variables)
     credentials: {
-      username: process.env.AUTH_USERNAME || 'admin@company.com',
-      password: process.env.AUTH_PASSWORD || 'admin123'
+      email: process.env.API_USERNAME || 'admin@company.com',
+      password: process.env.API_PASSWORD || 'admin123'
     },
     
-    // Request body for JWT login
-    requestBody: {
-      email: '{{credentials.username}}',
-      password: '{{credentials.password}}'
-    },
+    // Note: requestBody will be automatically created from credentials by the framework
     
     // JWT token extraction from login response
     extractors: {

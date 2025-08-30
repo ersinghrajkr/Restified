@@ -195,7 +195,7 @@ export class InitCommand {
         'lint:fix': 'eslint . --ext .ts --fix'
       },
       dependencies: {
-        restifiedts: '^2.0.7'
+        restifiedts: '^2.1.1'
       },
       devDependencies: {
         '@types/node': '^20.8.0',

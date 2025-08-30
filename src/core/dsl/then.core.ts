@@ -628,6 +628,38 @@ export class ThenStep {
     return `${baseURL}${requestDetails.path}`;
   }
 
+  /**
+   * Sleep/wait after assertions
+   * @param {number} ms - Milliseconds to sleep (e.g., 1000 = 1 second)
+   * @returns {Promise<this>} Promise resolving to ThenStep for method chaining
+   * @example
+   * ```typescript
+   * const response = await restified.given()
+   *   .baseURL('https://api.example.com')
+   * .when()
+   *   .get('/users')
+   *   .execute();
+   * 
+   * await response.then()
+   *   .statusCode(200)
+   *   .sleep(2000)  // Wait 2 seconds after assertion
+   *   .jsonPath('$.data.length', 5);
+   * ```
+   */
+  async sleep(ms: number): Promise<this> {
+    await new Promise(resolve => setTimeout(resolve, ms));
+    return this;
+  }
+
+  /**
+   * Alias for sleep() method
+   * @param {number} ms - Milliseconds to wait
+   * @returns {Promise<this>} Promise resolving to ThenStep for method chaining
+   */
+  async wait(ms: number): Promise<this> {
+    return this.sleep(ms);
+  }
+
   getResponse(): HttpResponse {
     return this.response;
   }

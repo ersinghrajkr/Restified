@@ -105,10 +105,23 @@ export interface AuthenticationConfig {
   endpoint: string;
   method: 'GET' | 'POST' | 'PUT' | 'DELETE';
   client: string;
+  
+  // Login credentials for authentication request
+  credentials?: {
+    email?: string;
+    password?: string;
+    username?: string;
+    // OAuth2 credentials
+    clientId?: string;
+    clientSecret?: string;
+    // Custom credential fields
+    [key: string]: any;
+  };
+  
   extractors: {
     token: string;
-    userEmail: string;
-    userId: string;
+    userEmail?: string;
+    userId?: string;
     // Enterprise-specific extractions
     roles?: string;
     permissions?: string;
@@ -119,8 +132,8 @@ export interface AuthenticationConfig {
   };
   fallback: {
     token: string;
-    userEmail: string;
-    userId: number;
+    userEmail?: string;
+    userId?: number;
     // Enterprise-specific fallbacks
     roles?: string[];
     permissions?: string[];

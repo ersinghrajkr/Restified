@@ -140,6 +140,7 @@ vite.config.ts.timestamp-*
 
 # Restified specific
 reports/
+raj-reports/
 test-results/
 examples/output/
 

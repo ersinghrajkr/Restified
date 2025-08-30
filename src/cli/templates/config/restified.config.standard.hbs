@@ -25,11 +25,32 @@ const config: RestifiedConfig = {
     }
   },
 
-  // 🔐 Authentication (optional - uncomment if needed)
+  // 🔐 Authentication (uncomment and configure if needed)
   // authentication: {
-  //   endpoint: '/auth/login',
+  //   endpoint: '/auth/login',           // Your login endpoint
+  //   method: 'POST',
+  //   credentials: {
+  //     // Choose appropriate login method for your API:
+  //     
+  //     // Option 1: Email/password
+  //     email: process.env.API_USERNAME || 'user@example.com',
+  //     password: process.env.API_PASSWORD || 'password123',
+  //     
+  //     // Option 2: Username/password (uncomment if needed)
+  //     // username: process.env.API_USERNAME || 'john_doe',
+  //     // password: process.env.API_PASSWORD || 'password123',
+  //     
+  //     // Option 3: Custom fields
+  //     // employeeId: process.env.EMPLOYEE_ID || 'EMP001',
+  //     // pin: process.env.PIN || '1234'
+  //   },
   //   extractors: {
-  //     token: '$.token'
+  //     token: '$.access_token',         // Extract JWT token
+  //     userEmail: '$.user.email'        // Extract user info
+  //   },
+  //   autoApplyToClients: 'all',         // Apply token to all clients
+  //   fallback: {
+  //     token: process.env.FALLBACK_TOKEN || 'dev-token-123'
   //   }
   // },
 

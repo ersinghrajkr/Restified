@@ -13,6 +13,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as stream from 'stream';
+import chalk from 'chalk';
 import { RestifiedTemplateEngine } from './restified-template-engine';
 
 // Enhanced interface for the reporter function with static methods
@@ -46,6 +47,9 @@ const RestifiedHtmlReporter = function(runner: any, options?: any) {
   
   // Initialize the internal static reporter
   RestifiedHtmlReporterImpl.initialize(runner, options);
+  
+  // Add console output for immediate feedback
+  RestifiedHtmlReporterImpl.setupConsoleOutput(runner);
 } as RestifiedHtmlReporterFunction;
 
 // Add static methods to the function for backwards compatibility
@@ -166,6 +170,68 @@ class RestifiedHtmlReporterImpl {
       console.log(`🚀 Performance Mode: ${this.largeReportMode ? 'Optimized for Large Reports' : 'Standard'}`);
       
       this.generateReport();
+    });
+  }
+
+  // Setup console output for real-time test feedback with colors
+  static setupConsoleOutput(runner: any): void {
+    let testCount = 0;
+    let passCount = 0;
+    let failCount = 0;
+    let pendingCount = 0;
+    let currentSuite = '';
+    
+    runner.on('start', () => {
+      console.log(chalk.cyan('\n  🚀 RestifiedTS Test Suite'));
+      console.log('');
+    });
+
+    runner.on('suite', (suite: any) => {
+      if (suite.title && suite.title !== '' && suite.title !== currentSuite) {
+        currentSuite = suite.title;
+        console.log(chalk.yellow(`  📂 ${suite.title}`));
+      }
+    });
+
+    runner.on('test', (test: any) => {
+      testCount++;
+      // No output during test execution to keep it clean
+    });
+
+    runner.on('pass', (test: any) => {
+      passCount++;
+      const duration = test.duration ? chalk.gray(` (${test.duration}ms)`) : '';
+      console.log(chalk.green(`    ✅ ${test.title}`) + duration);
+    });
+
+    runner.on('fail', (test: any, err: any) => {
+      failCount++;
+      const duration = test.duration ? chalk.gray(` (${test.duration}ms)`) : '';
+      console.log(chalk.red(`    ❌ ${test.title}`) + duration);
+      console.log(chalk.red(`       ${err.message}`));
+    });
+
+    runner.on('pending', (test: any) => {
+      pendingCount++;
+      console.log(chalk.yellow(`    ⏸️  ${test.title}`) + chalk.gray(' (pending)'));
+    });
+
+    runner.on('end', () => {
+      console.log('');
+      const successRate = testCount > 0 ? Math.round((passCount / testCount) * 100) : 0;
+      
+      if (failCount === 0) {
+        console.log(chalk.green(`  ✅ ${passCount} passing`) + chalk.gray(` (${successRate}%)`));
+      } else {
+        console.log(chalk.green(`  ✅ ${passCount} passing`));
+        console.log(chalk.red(`  ❌ ${failCount} failing`));
+      }
+      
+      if (pendingCount > 0) {
+        console.log(chalk.yellow(`  ⏸️  ${pendingCount} pending`));
+      }
+      
+      console.log('');
     });
   }
 
