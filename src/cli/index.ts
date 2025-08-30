@@ -16,7 +16,7 @@ const program = new Command();
 program
   .name('restifiedts')
   .description('Restified - Production-grade TypeScript API testing framework')
-  .version('2.0.8');
+  .version('2.1.1');
 
 // Add commands with error handling
 program.addCommand(new InitCommand().getCommand());

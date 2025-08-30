@@ -124,7 +124,7 @@ export class PackageGenerator extends BaseGenerator {
       "mocha": "^10.2.0",
       "mochawesome": "^7.1.3",
       "nyc": "^15.1.0",
-      "restifiedts": "^2.0.6", // Match current version
+      "restifiedts": "^2.1.1", // Match current version
       "rimraf": "^5.0.0",
       "ts-node": "^10.9.0",
       "tsconfig-paths": "^4.2.0",
