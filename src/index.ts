@@ -27,6 +27,8 @@ export { DatabaseManager } from './core/database/DatabaseManager';
 // Network and performance
 export { ConnectionManager, globalConnectionManager } from './core/network/ConnectionManager';
 export type { ConnectionPoolConfig, ConnectionStats } from './core/network/ConnectionManager';
+export { RetryManager, globalRetryManager } from './core/network/RetryManager';
+export type { RetryConfig, RetryStats } from './core/network/RetryManager';
 export { DatabaseClient } from './core/database/DatabaseClient';
 export { PostgreSQLClient } from './core/database/PostgreSQLClient';
 export { MongoDBClient } from './core/database/MongoDBClient';

@@ -14,6 +14,7 @@ import { UtilityManager } from './utils/UtilityManager';
 import { CustomUtilityPlugin, UtilityResult } from './utils/UtilityTypes';
 import { gracefulConfigManager } from './config/GracefulConfigManager';
 import { globalConnectionManager, ConnectionStats } from './network/ConnectionManager';
+import { globalRetryManager } from './network/RetryManager';
 import RestifiedHtmlReporter = require('../reporting/restified-html-reporter');
 import { RestifiedConfig, RequestConfig, HttpResponse, AssertionResult, AuthConfig } from '../RestifiedTypes';
 
@@ -798,6 +799,43 @@ export class Restified {
    */
   resetConnectionStats(): void {
     globalConnectionManager.resetStats();
+  }
+
+  /**
+   * Get retry statistics for reliability monitoring
+   * @returns Retry statistics including attempts, success rates, and error analysis
+   * @example
+   * ```typescript
+   * const retryStats = restified.getRetryStats();
+   * console.log(`Retry rate: ${retryStats.retriedRequests / retryStats.totalRequests * 100}%`);
+   * console.log(`Success after retry: ${retryStats.successAfterRetry}`);
+   * ```
+   */
+  getRetryStats() {
+    return globalRetryManager.getStats();
+  }
+
+  /**
+   * Get retry performance metrics and analysis
+   * @returns Retry metrics with recommendations
+   */
+  getRetryMetrics() {
+    return globalRetryManager.getMetrics();
+  }
+
+  /**
+   * Get retry recommendations based on current statistics
+   * @returns Array of actionable recommendations
+   */
+  getRetryRecommendations(): string[] {
+    return globalRetryManager.getRecommendations();
+  }
+
+  /**
+   * Reset retry statistics
+   */
+  resetRetryStats(): void {
+    globalRetryManager.resetStats();
   }
 
   // Enhanced cleanup method

@@ -26,6 +26,8 @@ export interface RequestConfig {
   retryDelay?: number;
   /** Connection pool configuration for performance optimization */
   connectionPool?: ConnectionPoolConfig;
+  /** Smart retry configuration for reliability */
+  retry?: RetryConfig;
 }
 
 /**
@@ -59,6 +61,48 @@ export interface ConnectionPoolConfig {
   noDelay?: boolean;
   /** Initial delay for keep-alive probes in milliseconds (default: 1000) */
   keepAliveInitialDelay?: number;
+}
+
+/**
+ * Smart retry configuration for HTTP request reliability
+ * @interface RetryConfig
+ * @example
+ * ```typescript
+ * const retryConfig: RetryConfig = {
+ *   enabled: true,
+ *   maxAttempts: 3,
+ *   baseDelay: 1000,
+ *   retryOnStatusCodes: [429, 500, 502, 503, 504]
+ * };
+ * ```
+ */
+export interface RetryConfig {
+  /** Enable retry mechanism (default: true) */
+  enabled?: boolean;
+  /** Maximum number of retry attempts (default: 3) */
+  maxAttempts?: number;
+  /** Base delay in milliseconds for exponential backoff (default: 1000) */
+  baseDelay?: number;
+  /** Maximum delay between retries in milliseconds (default: 30000) */
+  maxDelay?: number;
+  /** Exponential backoff multiplier (default: 2) */
+  backoffMultiplier?: number;
+  /** Add random jitter to prevent thundering herd (default: true) */
+  enableJitter?: boolean;
+  /** Maximum jitter as percentage of delay (default: 0.1 = 10%) */
+  jitterFactor?: number;
+  /** HTTP status codes that should trigger retries (default: [408, 429, 500, 502, 503, 504]) */
+  retryOnStatusCodes?: number[];
+  /** Retry on network errors (default: true) */
+  retryOnNetworkError?: boolean;
+  /** Retry on timeout (default: true) */
+  retryOnTimeout?: boolean;
+  /** Custom retry condition function */
+  retryCondition?: (error: any, attempt: number) => boolean;
+  /** Callback function called before each retry attempt */
+  onRetry?: (error: any, attempt: number, delay: number) => void;
+  /** Callback function called when max attempts reached */
+  onMaxAttemptsReached?: (error: any, attempts: number) => void;
 }
 
 /**
@@ -261,6 +305,10 @@ export interface RestifiedConfig {
   auth?: AuthConfig;
   retries?: number;
   retryDelay?: number;
+  /** Global retry configuration applied to all requests */
+  retry?: RetryConfig;
+  /** Global connection pool configuration */
+  connectionPool?: ConnectionPoolConfig;
   clients?: Record<string, RequestConfig>;
   hooks?: {
     globalSetup?: () => Promise<void>;

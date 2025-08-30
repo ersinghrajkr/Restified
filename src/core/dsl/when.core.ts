@@ -1,9 +1,11 @@
 import axios, { AxiosResponse } from 'axios';
 import { RequestConfig, HttpResponse } from '../../RestifiedTypes';
 import { ConnectionManager } from '../network/ConnectionManager';
+import { RetryManager, globalRetryManager } from '../network/RetryManager';
 
 export class WhenStep {
   private connectionManager: ConnectionManager;
+  private retryManager: RetryManager;
 
   constructor(
     private context: any,
@@ -11,6 +13,12 @@ export class WhenStep {
   ) {
     // Initialize connection manager with config if provided
     this.connectionManager = new ConnectionManager(this.config.connectionPool);
+    
+    // Use global retry manager but update its config if provided
+    this.retryManager = globalRetryManager;
+    if (this.config.retry) {
+      this.retryManager.updateConfig(this.config.retry);
+    }
   }
 
   /**
@@ -153,6 +161,22 @@ export class WhenStep {
       this.context.sleepDuration = 0; // Reset after use
     }
     
+    const requestDetails = this.context.getRequestDetails();
+    const url = this.buildUrl(requestDetails.path);
+    const requestId = `${requestDetails.method}:${url}:${Date.now()}`;
+    
+    // Execute HTTP request with retry logic
+    return await this.retryManager.executeWithRetry(
+      requestId,
+      async () => this.performHttpRequest(),
+      this.config.retry
+    );
+  }
+
+  /**
+   * Perform the actual HTTP request
+   */
+  private async performHttpRequest(): Promise<import('./then.core').ThenStep> {
     const startTime = Date.now();
     
     try {

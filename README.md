@@ -60,6 +60,7 @@ RestifiedTS is inspired by Java's RestAssured but built for the modern TypeScrip
 - **🔄 Configuration-Driven**: Zero boilerplate with `restified.config.ts`
 - **🔐 Automatic Authentication**: SSO/OAuth2 with automatic token injection
 - **⚡ High-Performance**: HTTP/2 connection pooling for 20-40% faster requests
+- **🔄 Smart Retry System**: Exponential backoff with jitter for maximum reliability
 - **📊 Comprehensive Reporting**: HTML, JSON, XML, JUnit, Excel with CI/CD integration
 - **🚀 Performance & Security**: Built-in K6, Artillery, and OWASP ZAP integration
 - **🌐 Multi-Client**: Test multiple microservices with shared authentication
@@ -562,6 +563,28 @@ const metrics = restified.getConnectionMetrics();
 console.log(`${metrics.cacheHitRatio}% connection reuse`);
 ```
 
+### **🔄 Smart Retry with Monitoring**
+
+```typescript
+// Intelligent retry with comprehensive monitoring
+const response = await restified
+  .given()
+    .retry({
+      enabled: true,
+      maxAttempts: 3,
+      baseDelay: 1000,
+      retryOnStatusCodes: [429, 500, 502, 503, 504]
+    })
+    .baseURL('https://api.example.com')
+  .when()
+    .get('/users')
+    .execute();
+
+// Monitor retry statistics
+const retryStats = restified.getRetryStats();
+console.log(`${retryStats.successAfterRetry} successful retries`);
+```
+
 ### **📊 Advanced Assertions**
 
 ```typescript
@@ -715,6 +738,312 @@ await restified.given()
 ✅ **Non-Breaking**: Doesn't affect existing RestifiedTS functionality  
 ✅ **Type-Safe**: Full TypeScript support with proper return types  
 ✅ **Use Case Optimized**: Perfect for rate limiting, async processing, and user simulation
+
+### **🔄 Smart Retry System with Exponential Backoff**
+
+RestifiedTS includes **intelligent retry mechanisms** with exponential backoff, jitter, and comprehensive error handling for maximum reliability in unstable network conditions.
+
+#### **🎯 1. Basic Retry Configuration**
+
+```typescript
+// Enable smart retries for better reliability
+const response = await restified.given()
+  .retry({
+    enabled: true,           // Enable retry mechanism (default: true)
+    maxAttempts: 3,         // Max retry attempts (default: 3)
+    baseDelay: 1000,        // Base delay in ms (default: 1000)
+    backoffMultiplier: 2,   // Exponential backoff (default: 2)
+    enableJitter: true,     // Add jitter to prevent thundering herd (default: true)
+    retryOnStatusCodes: [408, 429, 500, 502, 503, 504] // Retry conditions
+  })
+  .baseURL('https://api.example.com')
+.when()
+  .get('/users')
+  .execute();
+
+response.statusCode(200);
+```
+
+#### **⚡ 2. Advanced Retry Strategies**
+
+```typescript
+// Custom retry conditions and callbacks
+await restified.given()
+  .retry({
+    enabled: true,
+    maxAttempts: 5,
+    baseDelay: 500,
+    maxDelay: 30000,        // Cap maximum delay at 30s
+    retryOnNetworkError: true,
+    retryOnTimeout: true,
+    
+    // Custom retry condition
+    retryCondition: (error, attempt) => {
+      // Retry on specific conditions
+      if (error.response?.status === 429) return true;  // Rate limited
+      if (error.code === 'ECONNREFUSED') return true;   // Connection refused
+      if (attempt < 3 && error.response?.status >= 500) return true;
+      return false;
+    },
+    
+    // Retry callback for logging/monitoring
+    onRetry: (error, attempt, delay) => {
+      console.log(`🔄 Retry attempt ${attempt} after ${delay}ms: ${error.message}`);
+    },
+    
+    // Max attempts callback
+    onMaxAttemptsReached: (error, attempts) => {
+      console.error(`❌ Failed after ${attempts} attempts: ${error.message}`);
+    }
+  })
+  .baseURL('https://unreliable-api.example.com')
+.when()
+  .get('/flaky-endpoint')
+  .execute();
+```
+
+#### **🌐 3. Global Retry Configuration**
+
+```typescript
+// Configure retry behavior globally for all requests
+const restifiedWithRetry = new Restified({
+  retry: {
+    enabled: true,
+    maxAttempts: 3,
+    baseDelay: 1000,
+    retryOnStatusCodes: [429, 500, 502, 503, 504],
+    retryOnNetworkError: true,
+    retryOnTimeout: true
+  },
+  connectionPool: {
+    keepAlive: true,
+    maxSockets: 20
+  }
+});
+
+// All requests automatically use the global retry configuration
+const response1 = await restifiedWithRetry.given()
+  .baseURL('https://api1.example.com')
+.when()
+  .get('/data')
+  .execute();
+
+// Override global config for specific requests
+const response2 = await restifiedWithRetry.given()
+  .retry({
+    enabled: true,
+    maxAttempts: 1,  // Override: no retries for this request
+    baseDelay: 0
+  })
+  .baseURL('https://api2.example.com')
+.when()
+  .get('/fast-endpoint')
+  .execute();
+```
+
+#### **📊 4. Retry Monitoring and Analytics**
+
+```typescript
+// Monitor retry behavior and performance
+describe('API Reliability Testing', () => {
+  beforeEach(() => {
+    restified.resetRetryStats();  // Clear stats for each test
+  });
+
+  it('should handle transient failures gracefully', async () => {
+    // Simulate multiple API calls with potential failures
+    const requests = [];
+    
+    for (let i = 0; i < 10; i++) {
+      const request = restified.given()
+        .retry({
+          enabled: true,
+          maxAttempts: 3,
+          baseDelay: 200
+        })
+        .baseURL('https://api.example.com')
+      .when()
+        .get(`/endpoint-${i}`)
+        .execute()
+      .then(response => response.statusCode(200))
+      .catch(error => console.log(`Request ${i} failed: ${error.message}`));
+      
+      requests.push(request);
+    }
+    
+    await Promise.all(requests);
+    
+    // Analyze retry statistics
+    const retryStats = restified.getRetryStats();
+    console.log('📊 Retry Statistics:');
+    console.log(`   Total requests: ${retryStats.totalRequests}`);
+    console.log(`   Requests that needed retries: ${retryStats.retriedRequests}`);
+    console.log(`   Total retry attempts: ${retryStats.totalRetryAttempts}`);
+    console.log(`   Success after retry: ${retryStats.successAfterRetry}`);
+    console.log(`   Failed after max retries: ${retryStats.failedAfterMaxRetries}`);
+    
+    // Get performance metrics and recommendations
+    const metrics = restified.getRetryMetrics();
+    console.log('📈 Performance Metrics:');
+    console.log(`   Retry rate: ${metrics.retryRate.toFixed(2)}%`);
+    console.log(`   Success rate after retry: ${metrics.successRateAfterRetry.toFixed(2)}%`);
+    console.log(`   Average retry delay: ${metrics.averageRetryDelay.toFixed(2)}ms`);
+    
+    // Get actionable recommendations
+    const recommendations = restified.getRetryRecommendations();
+    console.log('💡 Recommendations:');
+    recommendations.forEach((rec, i) => console.log(`   ${i + 1}. ${rec}`));
+  });
+});
+```
+
+#### **🏭 5. Enterprise Scenarios**
+
+```typescript
+// Microservices with different retry strategies
+describe('Microservices Retry Strategies', () => {
+  it('should use different retry configs per service', async () => {
+    // User service - fast retries for better UX
+    const userServiceConfig = {
+      enabled: true,
+      maxAttempts: 2,
+      baseDelay: 200,
+      maxDelay: 2000,
+      retryOnStatusCodes: [429, 502, 503]
+    };
+
+    // Payment service - more aggressive retries for critical operations
+    const paymentServiceConfig = {
+      enabled: true,
+      maxAttempts: 5,
+      baseDelay: 1000,
+      maxDelay: 10000,
+      retryOnStatusCodes: [408, 429, 500, 502, 503, 504],
+      onRetry: (error, attempt, delay) => {
+        console.log(`💳 Payment retry ${attempt}: ${error.message}`);
+      }
+    };
+
+    // Analytics service - fewer retries, non-critical
+    const analyticsServiceConfig = {
+      enabled: true,
+      maxAttempts: 2,
+      baseDelay: 500,
+      retryOnStatusCodes: [503, 504]  // Only retry on service unavailable
+    };
+
+    // Execute requests with service-specific retry strategies
+    const [userResponse, paymentResponse, analyticsResponse] = await Promise.allSettled([
+      restified.given()
+        .retry(userServiceConfig)
+        .baseURL('https://users.company.com')
+      .when()
+        .get('/profile')
+        .execute(),
+
+      restified.given()
+        .retry(paymentServiceConfig)
+        .baseURL('https://payments.company.com')
+      .when()
+        .post('/charge', { amount: 100, currency: 'USD' })
+        .execute(),
+
+      restified.given()
+        .retry(analyticsServiceConfig)
+        .baseURL('https://analytics.company.com')
+      .when()
+        .post('/events', { action: 'purchase', userId: 123 })
+        .execute()
+    ]);
+
+    // Handle results with different expectations per service
+    if (userResponse.status === 'fulfilled') {
+      userResponse.value.statusCode(200);
+    }
+    
+    if (paymentResponse.status === 'fulfilled') {
+      paymentResponse.value.statusCode(200);
+    }
+    
+    // Analytics is optional - don't fail test if it fails
+    if (analyticsResponse.status === 'rejected') {
+      console.log('⚠️ Analytics service unavailable, continuing...');
+    }
+  });
+});
+
+// Circuit breaker pattern preparation
+describe('Circuit Breaker Preparation', () => {
+  it('should collect failure data for circuit breaker decisions', async () => {
+    const failingEndpoint = '/always-fails';
+    const attempts = 10;
+    
+    for (let i = 0; i < attempts; i++) {
+      try {
+        await restified.given()
+          .retry({
+            enabled: true,
+            maxAttempts: 2,
+            baseDelay: 100
+          })
+          .baseURL('https://api.example.com')
+        .when()
+          .get(failingEndpoint)
+          .execute();
+      } catch (error) {
+        // Expected failures
+      }
+    }
+    
+    const retryStats = restified.getRetryStats();
+    const failureRate = (retryStats.failedAfterMaxRetries / retryStats.totalRequests) * 100;
+    
+    console.log(`🔴 Failure rate for ${failingEndpoint}: ${failureRate.toFixed(2)}%`);
+    
+    // Circuit breaker decision logic
+    if (failureRate > 50) {
+      console.log('🚨 Circuit breaker should OPEN - too many failures');
+    } else if (failureRate > 20) {
+      console.log('⚠️ Circuit breaker should be HALF-OPEN - monitoring');
+    } else {
+      console.log('✅ Circuit breaker CLOSED - service healthy');
+    }
+  });
+});
+```
+
+#### **⚙️ Retry Configuration Options**
+
+```typescript
+interface RetryConfig {
+  enabled?: boolean;                    // Enable retry mechanism (default: true)
+  maxAttempts?: number;                // Maximum retry attempts (default: 3)
+  baseDelay?: number;                  // Base delay in ms (default: 1000)
+  maxDelay?: number;                   // Maximum delay in ms (default: 30000)
+  backoffMultiplier?: number;          // Exponential backoff multiplier (default: 2)
+  enableJitter?: boolean;              // Add jitter to prevent thundering herd (default: true)
+  jitterFactor?: number;               // Jitter percentage (default: 0.1 = 10%)
+  retryOnStatusCodes?: number[];       // HTTP codes to retry (default: [408, 429, 500, 502, 503, 504])
+  retryOnNetworkError?: boolean;       // Retry on network errors (default: true)
+  retryOnTimeout?: boolean;            // Retry on timeout (default: true)
+  retryCondition?: (error: any, attempt: number) => boolean;  // Custom retry logic
+  onRetry?: (error: any, attempt: number, delay: number) => void;  // Retry callback
+  onMaxAttemptsReached?: (error: any, attempts: number) => void;   // Max attempts callback
+}
+```
+
+#### **🎯 Retry Benefits & Features**
+
+✅ **Intelligent Backoff**: Exponential backoff with jitter prevents thundering herd  
+✅ **Configurable Conditions**: Retry on specific status codes, network errors, or custom conditions  
+✅ **Comprehensive Monitoring**: Detailed statistics and performance metrics  
+✅ **Global Configuration**: Set retry behavior once, apply everywhere  
+✅ **Per-Request Override**: Fine-tune retry behavior for specific endpoints  
+✅ **Enterprise Ready**: Circuit breaker preparation, failure analysis, recommendations  
+✅ **Callback Support**: Custom logging, monitoring, and alerting integration  
+✅ **Network Resilience**: Handle timeouts, connection failures, and transient errors  
+✅ **Performance Optimized**: Jitter and delay caps prevent resource exhaustion  
+✅ **Backward Compatible**: Works seamlessly with all existing RestifiedTS features
 
 ### **🚀 HTTP Connection Pooling & Performance**
 

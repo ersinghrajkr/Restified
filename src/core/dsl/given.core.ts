@@ -1,10 +1,23 @@
-import { AuthConfig, RequestConfig, ConnectionPoolConfig } from '../../RestifiedTypes';
+import { AuthConfig, RequestConfig, ConnectionPoolConfig, RetryConfig } from '../../RestifiedTypes';
 
 export class GivenStep {
   private config: RequestConfig = {};
   private localVars: Record<string, any> = {};
 
-  constructor(private context: any) {}
+  constructor(private context: any) {
+    // Apply global configurations from the main config
+    const globalConfig = this.context.getConfig();
+    
+    // Apply global retry configuration if set
+    if (globalConfig.retry) {
+      this.config.retry = { ...globalConfig.retry };
+    }
+    
+    // Apply global connection pool configuration if set
+    if (globalConfig.connectionPool) {
+      this.config.connectionPool = { ...globalConfig.connectionPool };
+    }
+  }
 
   /**
    * Sets the base URL for the HTTP request
@@ -191,6 +204,29 @@ export class GivenStep {
    */
   connectionPool(config: ConnectionPoolConfig): this {
     this.config.connectionPool = config;
+    return this;
+  }
+
+  /**
+   * Configure smart retry mechanism for request reliability
+   * @param {RetryConfig} config - Retry configuration
+   * @returns {this} GivenStep instance for method chaining
+   * @example
+   * ```typescript
+   * restified.given()
+   *   .retry({
+   *     enabled: true,
+   *     maxAttempts: 3,
+   *     baseDelay: 1000,
+   *     retryOnStatusCodes: [429, 500, 502, 503, 504]
+   *   })
+   *   .baseURL('https://api.example.com')
+   * .when()
+   *   .get('/users')
+   * ```
+   */
+  retry(config: RetryConfig): this {
+    this.config.retry = config;
     return this;
   }
 
