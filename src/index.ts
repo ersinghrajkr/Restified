@@ -33,6 +33,10 @@ export { CircuitBreakerManager, globalCircuitBreakerManager } from './core/netwo
 export type { CircuitBreakerStats, CircuitBreakerMetrics } from './core/network/CircuitBreakerManager';
 export { TimeoutManager, globalTimeoutManager } from './core/network/TimeoutManager';
 export type { TimeoutStats, TimeoutMetrics, TimeoutRecommendation } from './core/network/TimeoutManager';
+export { ErrorRecoveryManager } from './core/network/ErrorRecoveryManager';
+export type { ErrorRecoveryStats, ErrorRecoveryMetrics, FallbackResult } from './core/network/ErrorRecoveryManager';
+export { AdvancedPerformanceManager, globalAdvancedPerformanceManager } from './core/performance/AdvancedPerformanceManager';
+export type { PerformanceMetrics } from './core/performance/AdvancedPerformanceManager';
 export { DatabaseClient } from './core/database/DatabaseClient';
 export { PostgreSQLClient } from './core/database/PostgreSQLClient';
 export { MongoDBClient } from './core/database/MongoDBClient';

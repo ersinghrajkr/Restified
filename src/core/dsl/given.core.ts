@@ -1,4 +1,4 @@
-import { AuthConfig, RequestConfig, ConnectionPoolConfig, RetryConfig, CircuitBreakerConfig, TimeoutConfig } from '../../RestifiedTypes';
+import { AuthConfig, RequestConfig, ConnectionPoolConfig, RetryConfig, CircuitBreakerConfig, TimeoutConfig, ErrorRecoveryConfig, AdvancedPerformanceConfig } from '../../RestifiedTypes';
 
 export class GivenStep {
   private config: RequestConfig = {};
@@ -26,6 +26,16 @@ export class GivenStep {
     // Apply global timeout intelligence configuration if set
     if (globalConfig.timeoutIntelligence) {
       this.config.timeoutIntelligence = { ...globalConfig.timeoutIntelligence };
+    }
+    
+    // Apply global error recovery configuration if set
+    if (globalConfig.errorRecovery) {
+      this.config.errorRecovery = { ...globalConfig.errorRecovery };
+    }
+    
+    // Apply global advanced performance configuration if set
+    if (globalConfig.advancedPerformance) {
+      this.config.advancedPerformance = { ...globalConfig.advancedPerformance };
     }
   }
 
@@ -286,6 +296,55 @@ export class GivenStep {
    */
   timeoutIntelligence(config: TimeoutConfig): this {
     this.config.timeoutIntelligence = config;
+    return this;
+  }
+
+  /**
+   * Configure Error Recovery with graceful degradation strategies
+   * @param {ErrorRecoveryConfig} config - Error recovery configuration
+   * @returns {this} GivenStep instance for method chaining
+   * @example
+   * ```typescript
+   * restified.given()
+   *   .errorRecovery({
+   *     enabled: true,
+   *     enableFallbacks: true,
+   *     enableCaching: true,
+   *     enableDegradation: true,
+   *     maxFallbackAttempts: 3,
+   *     fallbackStrategies: ['cache', 'default', 'synthetic']
+   *   })
+   *   .baseURL('https://api.example.com')
+   * .when()
+   *   .get('/users')  // Will fallback gracefully if service fails
+   * ```
+   */
+  errorRecovery(config: ErrorRecoveryConfig): this {
+    this.config.errorRecovery = config;
+    return this;
+  }
+
+  /**
+   * Configure Advanced Performance optimizations (deduplication, caching, batching, streaming)
+   * @param {AdvancedPerformanceConfig} config - Advanced performance configuration
+   * @returns {this} GivenStep instance for method chaining
+   * @example
+   * ```typescript
+   * restified.given()
+   *   .advancedPerformance({
+   *     enabled: true,
+   *     deduplication: { enabled: true, maxWaitTime: 30000 },
+   *     caching: { enabled: true, maxCacheSize: 1000, defaultTtl: 300000 },
+   *     batching: { enabled: true, maxBatchSize: 10, batchTimeout: 100 },
+   *     streaming: { enabled: true, chunkSize: 65536 }
+   *   })
+   *   .baseURL('https://api.example.com')
+   * .when()
+   *   .get('/users')  // Will use performance optimizations
+   * ```
+   */
+  advancedPerformance(config: AdvancedPerformanceConfig): this {
+    this.config.advancedPerformance = config;
     return this;
   }
 

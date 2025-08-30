@@ -4,12 +4,16 @@ import { ConnectionManager } from '../network/ConnectionManager';
 import { RetryManager, globalRetryManager } from '../network/RetryManager';
 import { CircuitBreakerManager, globalCircuitBreakerManager } from '../network/CircuitBreakerManager';
 import { TimeoutManager, globalTimeoutManager } from '../network/TimeoutManager';
+import { ErrorRecoveryManager } from '../network/ErrorRecoveryManager';
+import { AdvancedPerformanceManager } from '../performance/AdvancedPerformanceManager';
 
 export class WhenStep {
   private connectionManager: ConnectionManager;
   private retryManager: RetryManager;
   private circuitBreakerManager: CircuitBreakerManager;
   private timeoutManager: TimeoutManager;
+  private errorRecoveryManager?: ErrorRecoveryManager;
+  private advancedPerformanceManager?: AdvancedPerformanceManager;
 
   constructor(
     private context: any,
@@ -31,6 +35,16 @@ export class WhenStep {
     this.timeoutManager = globalTimeoutManager;
     if (this.config.timeoutIntelligence) {
       this.timeoutManager.updateConfig(this.config.timeoutIntelligence);
+    }
+    
+    // Initialize error recovery manager only if enabled
+    if (this.config.errorRecovery?.enabled) {
+      this.errorRecoveryManager = new ErrorRecoveryManager(this.config.errorRecovery);
+    }
+    
+    // Initialize advanced performance manager only if enabled
+    if (this.config.advancedPerformance?.enabled) {
+      this.advancedPerformanceManager = new AdvancedPerformanceManager(this.config.advancedPerformance);
     }
   }
 
@@ -126,10 +140,9 @@ export class WhenStep {
 
   private request(method: string, path: string, body?: any): this {
     this.context.setRequestDetails({
-      method,
+      method: method.toUpperCase(),
       path: this.resolveVariables(path),
-      body: body ? this.resolveVariables(body) : undefined,
-      config: this.config
+      body: body ? this.resolveVariables(body) : undefined
     });
     return this;
   }
@@ -181,7 +194,80 @@ export class WhenStep {
     // Create circuit ID for this endpoint
     const circuitId = `${requestDetails.method}:${this.buildUrl('')}`;
     
-    // Execute HTTP request with circuit breaker and retry protection
+    // Execute HTTP request with all performance and resilience features
+    const performanceContext = {
+      method: requestDetails.method,
+      url: url,
+      headers: this.config.headers,
+      body: requestDetails.body,
+      cacheOptions: {
+        cacheable: true,
+        ttl: this.config.advancedPerformance?.caching?.defaultTtl,
+      },
+      batchOptions: {
+        batchable: this.config.advancedPerformance?.batching?.enabled,
+      },
+      streamOptions: {
+        chunkSize: this.config.advancedPerformance?.streaming?.chunkSize,
+      },
+    };
+
+    // Check if advanced performance is enabled
+    if (this.config.advancedPerformance?.enabled && this.advancedPerformanceManager) {
+      // Execute with advanced performance optimizations (deduplication, caching, batching, streaming)
+      return await this.advancedPerformanceManager.executeWithPerformanceOptimizations(
+        requestId,
+        async () => {
+          // Execute with optional error recovery integration
+          if (this.config.errorRecovery?.enabled && this.errorRecoveryManager) {
+            const endpointId = `${requestDetails.method}:${url}`;
+            const errorRecoveryContext = {
+              method: requestDetails.method,
+              url: url,
+              body: requestDetails.body
+            };
+            
+            const result = await this.errorRecoveryManager.executeWithRecovery(
+              endpointId,
+              async () => this.executeWithResilienceStack(circuitId, requestId),
+              errorRecoveryContext,
+              this.config.errorRecovery
+            );
+            
+            return result.data;
+          } else {
+            return await this.executeWithResilienceStack(circuitId, requestId);
+          }
+        },
+        performanceContext
+      );
+    } else if (this.config.errorRecovery?.enabled && this.errorRecoveryManager) {
+      // Execute with error recovery only (no advanced performance)
+      const endpointId = `${requestDetails.method}:${url}`;
+      const requestContext = {
+        method: requestDetails.method,
+        url: url,
+        body: requestDetails.body
+      };
+      
+      const result = await this.errorRecoveryManager.executeWithRecovery(
+        endpointId,
+        async () => this.executeWithResilienceStack(circuitId, requestId),
+        requestContext,
+        this.config.errorRecovery
+      );
+      
+      return result.data;
+    } else {
+      // Execute with standard resilience stack only - preserves original behavior
+      return await this.executeWithResilienceStack(circuitId, requestId);
+    }
+  }
+
+  /**
+   * Execute request with standard resilience stack (circuit breaker -> retry)
+   */
+  private async executeWithResilienceStack(circuitId: string, requestId: string): Promise<import('./then.core').ThenStep> {
     return await this.circuitBreakerManager.executeWithCircuitBreaker(
       circuitId,
       async () => {
@@ -436,4 +522,5 @@ export class WhenStep {
     
     return value;
   }
+
 }

@@ -27,3 +27,10 @@ export type {
   TimeoutMetrics,
   TimeoutRecommendation
 } from './TimeoutManager';
+
+export { ErrorRecoveryManager } from './ErrorRecoveryManager';
+export type {
+  ErrorRecoveryStats,
+  ErrorRecoveryMetrics,
+  FallbackResult
+} from './ErrorRecoveryManager';

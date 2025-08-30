@@ -17,6 +17,8 @@ import { globalConnectionManager, ConnectionStats } from './network/ConnectionMa
 import { globalRetryManager } from './network/RetryManager';
 import { globalCircuitBreakerManager, CircuitBreakerStats, CircuitBreakerMetrics } from './network/CircuitBreakerManager';
 import { globalTimeoutManager, TimeoutStats, TimeoutMetrics, TimeoutRecommendation } from './network/TimeoutManager';
+import { ErrorRecoveryManager } from './network/ErrorRecoveryManager';
+import { AdvancedPerformanceManager, PerformanceMetrics } from './performance/AdvancedPerformanceManager';
 import RestifiedHtmlReporter = require('../reporting/restified-html-reporter');
 import { RestifiedConfig, RequestConfig, HttpResponse, AssertionResult, AuthConfig } from '../RestifiedTypes';
 
@@ -1053,6 +1055,88 @@ export class Restified {
    */
   getAllTimeoutEndpoints(): string[] {
     return globalTimeoutManager.getAllEndpointIds();
+  }
+
+  // ================================
+  // Error Recovery Management
+  // ================================
+
+  /**
+   * Create an error recovery manager with custom configuration
+   * @param {Partial<import('../RestifiedTypes').ErrorRecoveryConfig>} config - Error recovery configuration
+   * @returns {ErrorRecoveryManager} New error recovery manager instance
+   * @example
+   * ```typescript
+   * const errorRecovery = restified.createErrorRecoveryManager({
+   *   enabled: true,
+   *   enableFallbacks: true,
+   *   enableCaching: true,
+   *   maxFallbackAttempts: 3,
+   *   fallbackStrategies: ['cache', 'default', 'synthetic']
+   * });
+   * ```
+   */
+  createErrorRecoveryManager(config?: Partial<import('../RestifiedTypes').ErrorRecoveryConfig>): ErrorRecoveryManager {
+    return new ErrorRecoveryManager(config);
+  }
+
+  /**
+   * Create an advanced performance manager with custom configuration
+   * @param {Partial<import('../RestifiedTypes').AdvancedPerformanceConfig>} config - Advanced performance configuration
+   * @returns {AdvancedPerformanceManager} New advanced performance manager instance
+   * @example
+   * ```typescript
+   * const performanceManager = restified.createAdvancedPerformanceManager({
+   *   enabled: true,
+   *   deduplication: { enabled: true, maxWaitTime: 30000 },
+   *   caching: { enabled: true, maxCacheSize: 1000, defaultTtl: 300000 },
+   *   batching: { enabled: true, maxBatchSize: 10, batchTimeout: 100 },
+   *   streaming: { enabled: true, chunkSize: 65536 }
+   * });
+   * ```
+   */
+  createAdvancedPerformanceManager(config?: Partial<import('../RestifiedTypes').AdvancedPerformanceConfig>): AdvancedPerformanceManager {
+    return new AdvancedPerformanceManager(config);
+  }
+
+  /**
+   * Get performance metrics from the global advanced performance manager
+   * @returns {PerformanceMetrics | null} Performance metrics or null if not available
+   * @example
+   * ```typescript
+   * const metrics = restified.getPerformanceMetrics();
+   * if (metrics) {
+   *   console.log(`Cache hit rate: ${(metrics.caching.hitRate * 100).toFixed(1)}%`);
+   *   console.log(`Deduplication rate: ${(metrics.deduplication.deduplicationRate * 100).toFixed(1)}%`);
+   *   console.log(`Total batches: ${metrics.batching.totalBatches}`);
+   *   console.log(`Streams processed: ${metrics.streaming.totalStreams}`);
+   * }
+   * ```
+   */
+  getPerformanceMetrics(): PerformanceMetrics | null {
+    try {
+      const { globalAdvancedPerformanceManager } = require('./performance/AdvancedPerformanceManager');
+      return globalAdvancedPerformanceManager.getPerformanceMetrics();
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Clear all performance caches and reset metrics
+   * @example
+   * ```typescript
+   * restified.clearPerformanceCaches();
+   * console.log('All performance caches cleared and metrics reset');
+   * ```
+   */
+  clearPerformanceCaches(): void {
+    try {
+      const { globalAdvancedPerformanceManager } = require('./performance/AdvancedPerformanceManager');
+      globalAdvancedPerformanceManager.clearCaches();
+    } catch (error) {
+      console.warn('Failed to clear performance caches:', error);
+    }
   }
 
   /**

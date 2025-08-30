@@ -32,6 +32,10 @@ export interface RequestConfig {
   circuitBreaker?: CircuitBreakerConfig;
   /** Intelligent timeout configuration for context-aware timeouts */
   timeoutIntelligence?: TimeoutConfig;
+  /** Error recovery configuration for graceful degradation */
+  errorRecovery?: ErrorRecoveryConfig;
+  /** Advanced performance configuration for optimization features */
+  advancedPerformance?: AdvancedPerformanceConfig;
 }
 
 /**
@@ -317,6 +321,10 @@ export interface RestifiedConfig {
   circuitBreaker?: CircuitBreakerConfig;
   /** Global timeout intelligence configuration */
   timeoutIntelligence?: TimeoutConfig;
+  /** Global error recovery configuration */
+  errorRecovery?: ErrorRecoveryConfig;
+  /** Global advanced performance configuration */
+  advancedPerformance?: AdvancedPerformanceConfig;
   clients?: Record<string, RequestConfig>;
   hooks?: {
     globalSetup?: () => Promise<void>;
@@ -745,4 +753,317 @@ export interface TimeoutProfile {
   learningEnabled: boolean;
   /** Pattern matching rules */
   patterns?: EndpointPattern[];
+}
+
+/**
+ * Error Recovery configuration for graceful degradation
+ * @interface ErrorRecoveryConfig
+ * @example
+ * ```typescript
+ * const recoveryConfig: ErrorRecoveryConfig = {
+ *   enabled: true,
+ *   enableFallbacks: true,
+ *   enableCaching: true,
+ *   enableDegradation: true,
+ *   cacheTimeout: 300000,
+ *   maxFallbackAttempts: 3
+ * };
+ * ```
+ */
+export interface ErrorRecoveryConfig {
+  /** Enable error recovery mechanisms (default: true) */
+  enabled?: boolean;
+  /** Enable fallback strategies (default: true) */
+  enableFallbacks?: boolean;
+  /** Enable response caching for fallbacks (default: true) */
+  enableCaching?: boolean;
+  /** Enable graceful degradation (default: true) */
+  enableDegradation?: boolean;
+  /** Cache timeout in milliseconds (default: 300000) */
+  cacheTimeout?: number;
+  /** Maximum fallback attempts before giving up (default: 3) */
+  maxFallbackAttempts?: number;
+  /** Timeout before attempting recovery from degradation (default: 60000) */
+  degradationTimeout?: number;
+  /** Interval between recovery attempts in milliseconds (default: 30000) */
+  recoveryAttemptInterval?: number;
+  /** Health check interval in milliseconds (default: 60000) */
+  healthCheckInterval?: number;
+  /** Timeout for individual fallback execution (default: 10000) */
+  fallbackTimeout?: number;
+  /** Enable automatic recovery attempts (default: true) */
+  autoRecovery?: boolean;
+}
+
+/**
+ * Fallback strategy for error recovery
+ * @interface FallbackStrategy
+ * @example
+ * ```typescript
+ * const cacheFallback: FallbackStrategy = {
+ *   name: 'cache-fallback',
+ *   type: 'cache',
+ *   priority: 1,
+ *   timeout: 5000,
+ *   description: 'Return cached response if available',
+ *   execute: async (error, context) => ({
+ *     success: true,
+ *     data: cachedData,
+ *     source: 'cached'
+ *   })
+ * };
+ * ```
+ */
+export interface FallbackStrategy {
+  /** Strategy name for identification */
+  name: string;
+  /** Strategy type (cache, alternative, synthetic, default) */
+  type: 'cache' | 'alternative' | 'synthetic' | 'default' | 'custom';
+  /** Execution priority (lower numbers execute first) */
+  priority: number;
+  /** Execution timeout in milliseconds */
+  timeout?: number;
+  /** Description of what this strategy does */
+  description?: string;
+  /** Conditions when this strategy should be used */
+  conditions?: {
+    errorTypes?: string[];
+    httpStatusCodes?: number[];
+    methods?: string[];
+    urlPatterns?: RegExp[];
+  };
+  /** Strategy execution function */
+  execute: (error: Error, context: { method: string; url: string; body?: any }) => Promise<{
+    success: boolean;
+    data: any;
+    source: 'primary' | 'fallback' | 'cached' | 'default' | 'synthetic';
+    fallbackUsed?: string;
+  }>;
+}
+
+/**
+ * Recovery action for service restoration
+ * @interface RecoveryAction
+ * @example
+ * ```typescript
+ * const healthCheckAction: RecoveryAction = {
+ *   name: 'health-check',
+ *   type: 'health-check',
+ *   priority: 1,
+ *   interval: 30000,
+ *   timeout: 5000,
+ *   execute: async (endpointId) => {
+ *     const response = await fetch(`${endpointId}/health`);
+ *     return response.ok;
+ *   }
+ * };
+ * ```
+ */
+export interface RecoveryAction {
+  /** Action name for identification */
+  name: string;
+  /** Action type */
+  type: 'health-check' | 'cache-warm' | 'reconnect' | 'reset' | 'custom';
+  /** Execution priority (lower numbers execute first) */
+  priority: number;
+  /** Execution interval in milliseconds */
+  interval?: number;
+  /** Execution timeout in milliseconds */
+  timeout?: number;
+  /** Description of what this action does */
+  description?: string;
+  /** Recovery action execution function */
+  execute: (endpointId: string) => Promise<void>;
+}
+
+// ================================
+// Advanced Performance Configuration Types
+// ================================
+
+/**
+ * Advanced Performance Configuration for RestifiedTS
+ * @interface AdvancedPerformanceConfig
+ * @example
+ * ```typescript
+ * const performanceConfig: AdvancedPerformanceConfig = {
+ *   enabled: true,
+ *   deduplication: { enabled: true, maxWaitTime: 30000 },
+ *   caching: { enabled: true, maxCacheSize: 1000, defaultTtl: 300000 },
+ *   batching: { enabled: true, maxBatchSize: 10, batchTimeout: 100 },
+ *   streaming: { enabled: true, chunkSize: 65536 }
+ * };
+ * ```
+ */
+export interface AdvancedPerformanceConfig {
+  /** Enable advanced performance features (default: true) */
+  enabled?: boolean;
+  
+  /** Request deduplication configuration */
+  deduplication?: RequestDeduplicationConfig;
+  
+  /** Response caching configuration */
+  caching?: ResponseCachingConfig;
+  
+  /** Request batching configuration */
+  batching?: RequestBatchingConfig;
+  
+  /** Streaming support configuration */
+  streaming?: StreamingSupportConfig;
+}
+
+/**
+ * Request Deduplication Configuration
+ * @interface RequestDeduplicationConfig
+ * @example
+ * ```typescript
+ * const deduplicationConfig: RequestDeduplicationConfig = {
+ *   enabled: true,
+ *   maxWaitTime: 30000,
+ *   cacheTtl: 60000
+ * };
+ * ```
+ */
+export interface RequestDeduplicationConfig {
+  /** Enable request deduplication (default: true) */
+  enabled?: boolean;
+  /** Maximum time to wait for duplicate request completion in ms (default: 30000) */
+  maxWaitTime?: number;
+  /** TTL for deduplication cache entries in ms (default: 60000) */
+  cacheTtl?: number;
+}
+
+/**
+ * Response Caching Configuration
+ * @interface ResponseCachingConfig
+ * @example
+ * ```typescript
+ * const cachingConfig: ResponseCachingConfig = {
+ *   enabled: true,
+ *   maxCacheSize: 1000,
+ *   defaultTtl: 300000,
+ *   evictionStrategy: 'lru'
+ * };
+ * ```
+ */
+export interface ResponseCachingConfig {
+  /** Enable response caching (default: true) */
+  enabled?: boolean;
+  /** Maximum number of cached responses (default: 1000) */
+  maxCacheSize?: number;
+  /** Default cache TTL in milliseconds (default: 300000 - 5 minutes) */
+  defaultTtl?: number;
+  /** Enable automatic cache invalidation (default: true) */
+  autoInvalidation?: boolean;
+  /** Cache eviction strategy (default: 'lru') */
+  evictionStrategy?: 'lru' | 'lfu' | 'fifo';
+}
+
+/**
+ * Request Batching Configuration
+ * @interface RequestBatchingConfig
+ * @example
+ * ```typescript
+ * const batchingConfig: RequestBatchingConfig = {
+ *   enabled: true,
+ *   maxBatchSize: 10,
+ *   batchTimeout: 100,
+ *   autoBatch: true
+ * };
+ * ```
+ */
+export interface RequestBatchingConfig {
+  /** Enable request batching (default: false) */
+  enabled?: boolean;
+  /** Maximum batch size (default: 10) */
+  maxBatchSize?: number;
+  /** Maximum wait time for batch collection in ms (default: 100) */
+  batchTimeout?: number;
+  /** Auto-batch similar requests (default: true) */
+  autoBatch?: boolean;
+}
+
+/**
+ * Streaming Support Configuration
+ * @interface StreamingSupportConfig
+ * @example
+ * ```typescript
+ * const streamingConfig: StreamingSupportConfig = {
+ *   enabled: true,
+ *   chunkSize: 65536,
+ *   backpressureControl: true,
+ *   maxMemoryUsage: 104857600
+ * };
+ * ```
+ */
+export interface StreamingSupportConfig {
+  /** Enable streaming support (default: true) */
+  enabled?: boolean;
+  /** Chunk size for streaming responses in bytes (default: 65536 - 64KB) */
+  chunkSize?: number;
+  /** Enable backpressure control (default: true) */
+  backpressureControl?: boolean;
+  /** Maximum memory usage for streaming in bytes (default: 104857600 - 100MB) */
+  maxMemoryUsage?: number;
+}
+
+/**
+ * Cache Options for individual requests
+ * @interface CacheOptions
+ * @example
+ * ```typescript
+ * const cacheOptions: CacheOptions = {
+ *   ttl: 600000,
+ *   cacheable: true,
+ *   cacheKey: 'users-list'
+ * };
+ * ```
+ */
+export interface CacheOptions {
+  /** Time to live in milliseconds */
+  ttl?: number;
+  /** Whether this request is cacheable */
+  cacheable?: boolean;
+  /** Custom cache key (default: auto-generated from request) */
+  cacheKey?: string;
+}
+
+/**
+ * Batch Options for individual requests
+ * @interface BatchOptions
+ * @example
+ * ```typescript
+ * const batchOptions: BatchOptions = {
+ *   batchable: true,
+ *   batchKey: 'user-operations'
+ * };
+ * ```
+ */
+export interface BatchOptions {
+  /** Whether this request can be batched */
+  batchable?: boolean;
+  /** Custom batch key for grouping requests */
+  batchKey?: string;
+}
+
+/**
+ * Stream Options for individual requests
+ * @interface StreamOptions
+ * @example
+ * ```typescript
+ * const streamOptions: StreamOptions = {
+ *   chunkSize: 32768,
+ *   encoding: 'utf8',
+ *   highWaterMark: 16384
+ * };
+ * ```
+ */
+export interface StreamOptions {
+  /** Chunk size for streaming */
+  chunkSize?: number;
+  /** Text encoding for streams */
+  encoding?: BufferEncoding;
+  /** High water mark for stream buffer */
+  highWaterMark?: number;
+  /** Enable object mode for streams */
+  objectMode?: boolean;
 }
