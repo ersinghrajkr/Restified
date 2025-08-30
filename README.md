@@ -61,6 +61,7 @@ RestifiedTS is inspired by Java's RestAssured but built for the modern TypeScrip
 - **🔐 Automatic Authentication**: SSO/OAuth2 with automatic token injection
 - **⚡ High-Performance**: HTTP/2 connection pooling for 20-40% faster requests
 - **🔄 Smart Retry System**: Exponential backoff with jitter for maximum reliability
+- **🛡️ Circuit Breaker Pattern**: Prevent cascade failures and protect downstream services
 - **📊 Comprehensive Reporting**: HTML, JSON, XML, JUnit, Excel with CI/CD integration
 - **🚀 Performance & Security**: Built-in K6, Artillery, and OWASP ZAP integration
 - **🌐 Multi-Client**: Test multiple microservices with shared authentication
@@ -1044,6 +1045,355 @@ interface RetryConfig {
 ✅ **Network Resilience**: Handle timeouts, connection failures, and transient errors  
 ✅ **Performance Optimized**: Jitter and delay caps prevent resource exhaustion  
 ✅ **Backward Compatible**: Works seamlessly with all existing RestifiedTS features
+
+### **🛡️ Circuit Breaker Pattern for Network Resilience**
+
+RestifiedTS includes **enterprise-grade Circuit Breaker pattern** implementation to prevent cascade failures and protect downstream services from being overwhelmed during outages. The circuit breaker monitors failure rates and automatically fails fast when services are unhealthy, allowing them time to recover.
+
+#### **🎯 1. Basic Circuit Breaker Configuration**
+
+```typescript
+// Enable circuit breaker for automatic failure protection
+const response = await restified.given()
+  .circuitBreaker({
+    enabled: true,                    // Enable circuit breaker (default: true)
+    failureThreshold: 5,             // Open after 5 consecutive failures
+    failureThresholdPercentage: 50,  // Or 50% failure rate
+    requestVolumeThreshold: 10,      // Minimum requests before evaluation
+    timeoutDuration: 30000,          // Request timeout (30s)
+    resetTimeoutDuration: 60000,     // Time before trying HALF_OPEN (60s)
+    halfOpenMaxAttempts: 3           // Max attempts in HALF_OPEN state
+  })
+  .baseURL('https://api.example.com')
+.when()
+  .get('/users')
+  .execute();
+
+response.statusCode(200);
+```
+
+#### **⚡ 2. Advanced Circuit Breaker with Callbacks**
+
+```typescript
+// Circuit breaker with monitoring and alerting callbacks
+await restified.given()
+  .circuitBreaker({
+    enabled: true,
+    failureThreshold: 3,
+    failureThresholdPercentage: 60,
+    requestVolumeThreshold: 5,
+    resetTimeoutDuration: 30000,
+    responseTimeThreshold: 5000,     // Consider slow responses as failures
+    
+    // Circuit state change callbacks for monitoring
+    onCircuitOpen: async (circuitId, stats) => {
+      console.error(`🚨 CIRCUIT OPENED: ${circuitId}`);
+      console.error(`Failure count: ${stats.failureCount}/${stats.totalRequests}`);
+      
+      // Send alert to monitoring system
+      await sendAlert('circuit-breaker', {
+        event: 'OPEN',
+        service: circuitId,
+        failureRate: (stats.failureCount / stats.totalRequests * 100).toFixed(2),
+        timestamp: new Date().toISOString()
+      });
+    },
+    
+    onCircuitClose: async (circuitId, stats) => {
+      console.log(`✅ CIRCUIT CLOSED: ${circuitId} - Service recovered`);
+      
+      // Send recovery notification
+      await sendAlert('circuit-breaker', {
+        event: 'CLOSED',
+        service: circuitId,
+        timestamp: new Date().toISOString()
+      });
+    },
+    
+    onCircuitHalfOpen: async (circuitId, stats) => {
+      console.log(`🔄 CIRCUIT HALF-OPEN: ${circuitId} - Testing recovery`);
+    }
+  })
+  .retry({
+    enabled: true,
+    maxAttempts: 2,    // Reduced retries since circuit breaker handles failures
+    baseDelay: 1000
+  })
+  .baseURL('https://unreliable-service.example.com')
+.when()
+  .post('/process-order', { orderId: 12345 })
+  .execute();
+```
+
+#### **🌐 3. Global Circuit Breaker Configuration**
+
+```typescript
+// Configure circuit breaker behavior globally for all services
+const restifiedWithCircuitBreaker = new Restified({
+  circuitBreaker: {
+    enabled: true,
+    failureThreshold: 5,
+    failureThresholdPercentage: 50,
+    requestVolumeThreshold: 10,
+    timeoutDuration: 30000,
+    resetTimeoutDuration: 60000,
+    responseTimeThreshold: 5000
+  },
+  retry: {
+    enabled: true,
+    maxAttempts: 2,    // Circuit breaker + retry for maximum resilience
+    baseDelay: 500
+  }
+});
+
+// All requests automatically use circuit breaker protection
+const response1 = await restifiedWithCircuitBreaker.given()
+  .baseURL('https://api1.example.com')
+.when()
+  .get('/data')
+  .execute();
+
+// Override global config for specific services
+const response2 = await restifiedWithCircuitBreaker.given()
+  .circuitBreaker({
+    enabled: true,
+    failureThreshold: 3,        // More sensitive for critical service
+    resetTimeoutDuration: 30000 // Faster recovery attempts
+  })
+  .baseURL('https://critical-api.example.com')
+.when()
+  .get('/critical-operation')
+  .execute();
+```
+
+#### **📊 4. Circuit Breaker Monitoring and Analytics**
+
+```typescript
+// Monitor circuit breaker states and performance
+describe('Circuit Breaker Monitoring', () => {
+  it('should track circuit states and provide metrics', async () => {
+    // Reset circuit breaker stats for clean test
+    restified.resetCircuitBreakerStats();
+    
+    // Simulate multiple requests to trigger circuit breaker behavior
+    const requests = [];
+    
+    for (let i = 0; i < 20; i++) {
+      const request = restified.given()
+        .circuitBreaker({
+          enabled: true,
+          failureThreshold: 5,
+          requestVolumeThreshold: 3
+        })
+        .baseURL('https://flaky-api.example.com')
+      .when()
+        .get(`/endpoint-${i}`)
+        .execute()
+      .catch(error => {
+        if (error.circuitBreakerState === 'OPEN') {
+          console.log(`⚡ Fast fail: Circuit breaker is OPEN for ${error.circuitId}`);
+        }
+        return null;
+      });
+      
+      requests.push(request);
+    }
+    
+    await Promise.allSettled(requests);
+    
+    // Analyze all circuits
+    const allCircuits = restified.getAllCircuitIds();
+    console.log(`📊 Monitoring ${allCircuits.length} circuits:`);
+    
+    allCircuits.forEach(circuitId => {
+      const state = restified.getCircuitState(circuitId);
+      const stats = restified.getCircuitBreakerStats(circuitId);
+      const metrics = restified.getCircuitBreakerMetrics(circuitId);
+      
+      console.log(`\n🔌 Circuit: ${circuitId}`);
+      console.log(`   State: ${state}`);
+      console.log(`   Requests: ${stats.totalRequests}`);
+      console.log(`   Failures: ${stats.failureCount}`);
+      console.log(`   Success Rate: ${((stats.successCount / stats.totalRequests) * 100).toFixed(2)}%`);
+      
+      if (metrics) {
+        console.log(`   Availability: ${metrics.availabilityPercentage.toFixed(2)}%`);
+        console.log(`   P95 Response Time: ${metrics.responseTimeP95}ms`);
+        console.log(`   Mean Time to Recovery: ${metrics.meanTimeToRecovery}ms`);
+      }
+    });
+  });
+
+  it('should handle circuit breaker state transitions', async () => {
+    const circuitId = 'GET:https://test-api.example.com';
+    
+    // Force circuit open for testing
+    restified.forceOpenCircuit(circuitId);
+    expect(restified.getCircuitState(circuitId)).to.equal('OPEN');
+    
+    // Test fast-fail behavior
+    try {
+      await restified.given()
+        .baseURL('https://test-api.example.com')
+      .when()
+        .get('/test')
+        .execute();
+      
+      // Should not reach here
+      throw new Error('Expected circuit breaker to prevent request');
+    } catch (error) {
+      expect(error.circuitBreakerState).to.equal('OPEN');
+      expect(error.message).to.include('Circuit breaker');
+    }
+    
+    // Force circuit closed for recovery testing
+    restified.forceCloseCircuit(circuitId);
+    expect(restified.getCircuitState(circuitId)).to.equal('CLOSED');
+  });
+});
+```
+
+#### **🏭 5. Enterprise Microservices Protection**
+
+```typescript
+// Different circuit breaker strategies per service type
+describe('Microservices Circuit Breaker Strategies', () => {
+  it('should protect different service types appropriately', async () => {
+    // User service - quick recovery, user-facing
+    const userServiceConfig = {
+      enabled: true,
+      failureThreshold: 3,
+      failureThresholdPercentage: 60,
+      requestVolumeThreshold: 5,
+      timeoutDuration: 5000,        // Quick timeout for UX
+      resetTimeoutDuration: 15000,  // Fast recovery attempts
+      responseTimeThreshold: 2000   // Consider slow responses as failures
+    };
+
+    // Payment service - conservative, high reliability needed
+    const paymentServiceConfig = {
+      enabled: true,
+      failureThreshold: 2,          // Very sensitive to failures
+      failureThresholdPercentage: 30,
+      requestVolumeThreshold: 3,
+      timeoutDuration: 10000,       // Allow longer for payment processing
+      resetTimeoutDuration: 60000,  // Conservative recovery
+      responseTimeThreshold: 8000
+    };
+
+    // Analytics service - tolerant, non-critical
+    const analyticsServiceConfig = {
+      enabled: true,
+      failureThreshold: 10,         // More tolerant
+      failureThresholdPercentage: 80,
+      requestVolumeThreshold: 20,
+      timeoutDuration: 30000,       // Allow long processing
+      resetTimeoutDuration: 120000, // Slow recovery is acceptable
+      responseTimeThreshold: 15000
+    };
+
+    // Execute requests with service-appropriate circuit breaker protection
+    const [userResponse, paymentResponse, analyticsResponse] = await Promise.allSettled([
+      restified.given()
+        .circuitBreaker(userServiceConfig)
+        .retry({ enabled: true, maxAttempts: 2, baseDelay: 200 })
+        .baseURL('https://users.company.com')
+      .when()
+        .get('/profile')
+        .execute(),
+
+      restified.given()
+        .circuitBreaker(paymentServiceConfig)
+        .retry({ enabled: true, maxAttempts: 3, baseDelay: 1000 })
+        .baseURL('https://payments.company.com')
+      .when()
+        .post('/process-payment', { amount: 100.00 })
+        .execute(),
+
+      restified.given()
+        .circuitBreaker(analyticsServiceConfig)
+        .retry({ enabled: true, maxAttempts: 1 }) // Minimal retries for analytics
+        .baseURL('https://analytics.company.com')
+      .when()
+        .post('/track-event', { event: 'user_action' })
+        .execute()
+    ]);
+
+    // Analyze service health across the ecosystem
+    const circuits = restified.getAllCircuitIds();
+    const healthReport = circuits.map(circuitId => ({
+      service: circuitId.split(':')[1],
+      method: circuitId.split(':')[0],
+      state: restified.getCircuitState(circuitId),
+      metrics: restified.getCircuitBreakerMetrics(circuitId)
+    }));
+
+    console.log('🏥 Microservices Health Report:');
+    healthReport.forEach(service => {
+      console.log(`   ${service.method} ${service.service}: ${service.state}`);
+      if (service.metrics) {
+        console.log(`      Availability: ${service.metrics.availabilityPercentage.toFixed(1)}%`);
+      }
+    });
+  });
+});
+```
+
+#### **📈 6. Circuit Breaker + Retry Integration**
+
+```typescript
+// Circuit breaker works seamlessly with retry system for maximum resilience
+describe('Circuit Breaker + Retry Integration', () => {
+  it('should provide layered resilience protection', async () => {
+    // Layer 1: Retry system handles transient failures
+    // Layer 2: Circuit breaker prevents cascade failures
+    const response = await restified.given()
+      .retry({
+        enabled: true,
+        maxAttempts: 3,
+        baseDelay: 500,
+        retryOnStatusCodes: [429, 502, 503, 504]
+      })
+      .circuitBreaker({
+        enabled: true,
+        failureThreshold: 5,
+        failureThresholdPercentage: 50,
+        requestVolumeThreshold: 10,
+        resetTimeoutDuration: 30000
+      })
+      .baseURL('https://resilient-api.example.com')
+    .when()
+      .get('/protected-endpoint')
+      .execute();
+
+    // If the circuit is CLOSED:
+    //   1. Request attempts normally
+    //   2. On failure, retry system kicks in (up to 3 attempts)
+    //   3. Each retry attempt is tracked by circuit breaker
+    //   4. If overall failure rate exceeds threshold, circuit opens
+    //
+    // If the circuit is OPEN:
+    //   1. Request fails fast immediately (no retry attempts wasted)
+    //   2. Service gets time to recover
+    //   3. After timeout, circuit moves to HALF_OPEN for testing
+    //
+    // If the circuit is HALF_OPEN:
+    //   1. Limited requests are allowed through
+    //   2. Successful requests close the circuit
+    //   3. Failed requests reopen the circuit
+
+    response.statusCode(200);
+  });
+});
+```
+
+✅ **Automatic Failure Detection**: Monitors request success/failure rates automatically  
+✅ **Fast Failure**: Prevents wasting resources on failed services  
+✅ **Self-Healing**: Automatically tests recovery and resumes normal operation  
+✅ **Configurable Thresholds**: Customize failure detection for different service types  
+✅ **Comprehensive Monitoring**: Real-time circuit state and performance metrics  
+✅ **Retry Integration**: Works seamlessly with retry system for layered resilience  
+✅ **Enterprise Ready**: Perfect for microservices, distributed systems, and high availability scenarios
 
 ### **🚀 HTTP Connection Pooling & Performance**
 

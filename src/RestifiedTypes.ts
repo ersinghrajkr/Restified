@@ -28,6 +28,8 @@ export interface RequestConfig {
   connectionPool?: ConnectionPoolConfig;
   /** Smart retry configuration for reliability */
   retry?: RetryConfig;
+  /** Circuit breaker configuration for resilience */
+  circuitBreaker?: CircuitBreakerConfig;
 }
 
 /**
@@ -309,6 +311,8 @@ export interface RestifiedConfig {
   retry?: RetryConfig;
   /** Global connection pool configuration */
   connectionPool?: ConnectionPoolConfig;
+  /** Global circuit breaker configuration */
+  circuitBreaker?: CircuitBreakerConfig;
   clients?: Record<string, RequestConfig>;
   hooks?: {
     globalSetup?: () => Promise<void>;
@@ -604,3 +608,50 @@ export interface DatabaseStateManagementConfig {
   seedDataPath: string;
   migrationPath: string;
 }
+
+/**
+ * Circuit Breaker Pattern configuration for network resilience
+ * @interface CircuitBreakerConfig
+ * @example
+ * ```typescript
+ * const circuitConfig: CircuitBreakerConfig = {
+ *   enabled: true,
+ *   failureThreshold: 5,
+ *   failureThresholdPercentage: 50,
+ *   requestVolumeThreshold: 10,
+ *   timeoutDuration: 30000,
+ *   resetTimeoutDuration: 60000
+ * };
+ * ```
+ */
+export interface CircuitBreakerConfig {
+  /** Enable circuit breaker protection (default: true) */
+  enabled?: boolean;
+  /** Number of failures before opening circuit (default: 5) */
+  failureThreshold?: number;
+  /** Failure percentage threshold (0-100) before opening circuit (default: 50) */
+  failureThresholdPercentage?: number;
+  /** Minimum number of requests before evaluating circuit (default: 10) */
+  requestVolumeThreshold?: number;
+  /** Individual request timeout in milliseconds (default: 30000) */
+  timeoutDuration?: number;
+  /** Time to wait before transitioning from OPEN to HALF_OPEN in milliseconds (default: 60000) */
+  resetTimeoutDuration?: number;
+  /** Maximum attempts allowed in HALF_OPEN state (default: 3) */
+  halfOpenMaxAttempts?: number;
+  /** Monitoring window period in milliseconds (default: 60000) */
+  monitoringPeriod?: number;
+  /** Response time threshold for considering request as slow/failed (default: 5000) */
+  responseTimeThreshold?: number;
+  /** Callback function when circuit opens */
+  onCircuitOpen?: (circuitId: string, stats: any) => Promise<void> | void;
+  /** Callback function when circuit closes */
+  onCircuitClose?: (circuitId: string, stats: any) => Promise<void> | void;
+  /** Callback function when circuit transitions to half-open */
+  onCircuitHalfOpen?: (circuitId: string, stats: any) => Promise<void> | void;
+}
+
+/**
+ * Circuit Breaker states
+ */
+export type CircuitBreakerState = 'CLOSED' | 'OPEN' | 'HALF_OPEN';

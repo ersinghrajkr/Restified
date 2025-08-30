@@ -1,4 +1,4 @@
-import { AuthConfig, RequestConfig, ConnectionPoolConfig, RetryConfig } from '../../RestifiedTypes';
+import { AuthConfig, RequestConfig, ConnectionPoolConfig, RetryConfig, CircuitBreakerConfig } from '../../RestifiedTypes';
 
 export class GivenStep {
   private config: RequestConfig = {};
@@ -16,6 +16,11 @@ export class GivenStep {
     // Apply global connection pool configuration if set
     if (globalConfig.connectionPool) {
       this.config.connectionPool = { ...globalConfig.connectionPool };
+    }
+    
+    // Apply global circuit breaker configuration if set
+    if (globalConfig.circuitBreaker) {
+      this.config.circuitBreaker = { ...globalConfig.circuitBreaker };
     }
   }
 
@@ -227,6 +232,30 @@ export class GivenStep {
    */
   retry(config: RetryConfig): this {
     this.config.retry = config;
+    return this;
+  }
+
+  /**
+   * Configure Circuit Breaker pattern for network resilience
+   * @param {CircuitBreakerConfig} config - Circuit breaker configuration
+   * @returns {this} GivenStep instance for method chaining
+   * @example
+   * ```typescript
+   * restified.given()
+   *   .circuitBreaker({
+   *     enabled: true,
+   *     failureThreshold: 5,
+   *     failureThresholdPercentage: 50,
+   *     requestVolumeThreshold: 10,
+   *     resetTimeoutDuration: 60000
+   *   })
+   *   .baseURL('https://api.example.com')
+   * .when()
+   *   .get('/users')
+   * ```
+   */
+  circuitBreaker(config: CircuitBreakerConfig): this {
+    this.config.circuitBreaker = config;
     return this;
   }
 

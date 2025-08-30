@@ -14,3 +14,9 @@ export type {
   RetryStats,
   RetryAttempt
 } from './RetryManager';
+
+export { CircuitBreakerManager, globalCircuitBreakerManager } from './CircuitBreakerManager';
+export type {
+  CircuitBreakerStats,
+  CircuitBreakerMetrics
+} from './CircuitBreakerManager';

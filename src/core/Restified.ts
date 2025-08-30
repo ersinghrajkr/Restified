@@ -15,6 +15,7 @@ import { CustomUtilityPlugin, UtilityResult } from './utils/UtilityTypes';
 import { gracefulConfigManager } from './config/GracefulConfigManager';
 import { globalConnectionManager, ConnectionStats } from './network/ConnectionManager';
 import { globalRetryManager } from './network/RetryManager';
+import { globalCircuitBreakerManager, CircuitBreakerStats, CircuitBreakerMetrics } from './network/CircuitBreakerManager';
 import RestifiedHtmlReporter = require('../reporting/restified-html-reporter');
 import { RestifiedConfig, RequestConfig, HttpResponse, AssertionResult, AuthConfig } from '../RestifiedTypes';
 
@@ -836,6 +837,106 @@ export class Restified {
    */
   resetRetryStats(): void {
     globalRetryManager.resetStats();
+  }
+
+  /**
+   * Get circuit breaker statistics for all circuits or a specific circuit
+   * @param {string} [circuitId] - Optional circuit ID to get specific stats
+   * @returns {Map<string, CircuitBreakerStats> | CircuitBreakerStats | null} Circuit breaker statistics
+   * @example
+   * ```typescript
+   * const allStats = restified.getCircuitBreakerStats();
+   * const apiStats = restified.getCircuitBreakerStats('GET:https://api.example.com');
+   * console.log(`Circuit state: ${apiStats?.state}`);
+   * console.log(`Failure rate: ${apiStats ? (apiStats.failureCount / apiStats.totalRequests * 100) : 0}%`);
+   * ```
+   */
+  getCircuitBreakerStats(circuitId?: string): Map<string, CircuitBreakerStats> | CircuitBreakerStats | null {
+    return globalCircuitBreakerManager.getStats(circuitId);
+  }
+
+  /**
+   * Get circuit breaker metrics with calculated performance indicators
+   * @param {string} circuitId - Circuit ID to get metrics for
+   * @returns {CircuitBreakerMetrics | null} Circuit breaker metrics or null if not found
+   * @example
+   * ```typescript
+   * const metrics = restified.getCircuitBreakerMetrics('GET:https://api.example.com');
+   * if (metrics) {
+   *   console.log(`Availability: ${metrics.availabilityPercentage.toFixed(2)}%`);
+   *   console.log(`P95 Response Time: ${metrics.responseTimeP95}ms`);
+   *   console.log(`Mean Time to Recovery: ${metrics.meanTimeToRecovery}ms`);
+   * }
+   * ```
+   */
+  getCircuitBreakerMetrics(circuitId: string): CircuitBreakerMetrics | null {
+    return globalCircuitBreakerManager.getMetrics(circuitId);
+  }
+
+  /**
+   * Reset circuit breaker statistics for all circuits or a specific circuit
+   * @param {string} [circuitId] - Optional circuit ID to reset specific circuit
+   * @example
+   * ```typescript
+   * restified.resetCircuitBreakerStats(); // Reset all circuits
+   * restified.resetCircuitBreakerStats('GET:https://api.example.com'); // Reset specific circuit
+   * ```
+   */
+  resetCircuitBreakerStats(circuitId?: string): void {
+    globalCircuitBreakerManager.resetStats(circuitId);
+  }
+
+  /**
+   * Force open a circuit breaker (for testing or maintenance)
+   * @param {string} circuitId - Circuit ID to force open
+   * @example
+   * ```typescript
+   * restified.forceOpenCircuit('GET:https://api.example.com');
+   * ```
+   */
+  forceOpenCircuit(circuitId: string): void {
+    globalCircuitBreakerManager.forceOpen(circuitId);
+  }
+
+  /**
+   * Force close a circuit breaker (for emergency recovery)
+   * @param {string} circuitId - Circuit ID to force close
+   * @example
+   * ```typescript
+   * restified.forceCloseCircuit('GET:https://api.example.com');
+   * ```
+   */
+  forceCloseCircuit(circuitId: string): void {
+    globalCircuitBreakerManager.forceClose(circuitId);
+  }
+
+  /**
+   * Get current state of a circuit breaker
+   * @param {string} circuitId - Circuit ID to check
+   * @returns {'CLOSED' | 'OPEN' | 'HALF_OPEN'} Current circuit state
+   * @example
+   * ```typescript
+   * const state = restified.getCircuitState('GET:https://api.example.com');
+   * console.log(`Circuit is currently: ${state}`);
+   * ```
+   */
+  getCircuitState(circuitId: string): 'CLOSED' | 'OPEN' | 'HALF_OPEN' {
+    return globalCircuitBreakerManager.getCurrentState(circuitId);
+  }
+
+  /**
+   * Get all circuit IDs being tracked
+   * @returns {string[]} Array of circuit IDs
+   * @example
+   * ```typescript
+   * const circuits = restified.getAllCircuitIds();
+   * circuits.forEach(id => {
+   *   console.log(`Circuit: ${id}, State: ${restified.getCircuitState(id)}`);
+   * });
+   * ```
+   */
+  getAllCircuitIds(): string[] {
+    return globalCircuitBreakerManager.getAllCircuitIds();
   }
 
   // Enhanced cleanup method

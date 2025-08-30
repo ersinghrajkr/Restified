@@ -29,6 +29,8 @@ export { ConnectionManager, globalConnectionManager } from './core/network/Conne
 export type { ConnectionPoolConfig, ConnectionStats } from './core/network/ConnectionManager';
 export { RetryManager, globalRetryManager } from './core/network/RetryManager';
 export type { RetryConfig, RetryStats } from './core/network/RetryManager';
+export { CircuitBreakerManager, globalCircuitBreakerManager } from './core/network/CircuitBreakerManager';
+export type { CircuitBreakerStats, CircuitBreakerMetrics } from './core/network/CircuitBreakerManager';
 export { DatabaseClient } from './core/database/DatabaseClient';
 export { PostgreSQLClient } from './core/database/PostgreSQLClient';
 export { MongoDBClient } from './core/database/MongoDBClient';

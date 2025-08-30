@@ -2,10 +2,12 @@ import axios, { AxiosResponse } from 'axios';
 import { RequestConfig, HttpResponse } from '../../RestifiedTypes';
 import { ConnectionManager } from '../network/ConnectionManager';
 import { RetryManager, globalRetryManager } from '../network/RetryManager';
+import { CircuitBreakerManager, globalCircuitBreakerManager } from '../network/CircuitBreakerManager';
 
 export class WhenStep {
   private connectionManager: ConnectionManager;
   private retryManager: RetryManager;
+  private circuitBreakerManager: CircuitBreakerManager;
 
   constructor(
     private context: any,
@@ -19,6 +21,9 @@ export class WhenStep {
     if (this.config.retry) {
       this.retryManager.updateConfig(this.config.retry);
     }
+    
+    // Use global circuit breaker manager
+    this.circuitBreakerManager = globalCircuitBreakerManager;
   }
 
   /**
@@ -165,11 +170,21 @@ export class WhenStep {
     const url = this.buildUrl(requestDetails.path);
     const requestId = `${requestDetails.method}:${url}:${Date.now()}`;
     
-    // Execute HTTP request with retry logic
-    return await this.retryManager.executeWithRetry(
-      requestId,
-      async () => this.performHttpRequest(),
-      this.config.retry
+    // Create circuit ID for this endpoint
+    const circuitId = `${requestDetails.method}:${this.buildUrl('')}`;
+    
+    // Execute HTTP request with circuit breaker and retry protection
+    return await this.circuitBreakerManager.executeWithCircuitBreaker(
+      circuitId,
+      async () => {
+        // Execute with retry logic inside circuit breaker
+        return await this.retryManager.executeWithRetry(
+          requestId,
+          async () => this.performHttpRequest(),
+          this.config.retry
+        );
+      },
+      this.config.circuitBreaker
     );
   }
 
