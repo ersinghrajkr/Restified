@@ -20,3 +20,10 @@ export type {
   CircuitBreakerStats,
   CircuitBreakerMetrics
 } from './CircuitBreakerManager';
+
+export { TimeoutManager, globalTimeoutManager } from './TimeoutManager';
+export type {
+  TimeoutStats,
+  TimeoutMetrics,
+  TimeoutRecommendation
+} from './TimeoutManager';

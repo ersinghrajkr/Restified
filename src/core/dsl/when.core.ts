@@ -3,11 +3,13 @@ import { RequestConfig, HttpResponse } from '../../RestifiedTypes';
 import { ConnectionManager } from '../network/ConnectionManager';
 import { RetryManager, globalRetryManager } from '../network/RetryManager';
 import { CircuitBreakerManager, globalCircuitBreakerManager } from '../network/CircuitBreakerManager';
+import { TimeoutManager, globalTimeoutManager } from '../network/TimeoutManager';
 
 export class WhenStep {
   private connectionManager: ConnectionManager;
   private retryManager: RetryManager;
   private circuitBreakerManager: CircuitBreakerManager;
+  private timeoutManager: TimeoutManager;
 
   constructor(
     private context: any,
@@ -24,6 +26,12 @@ export class WhenStep {
     
     // Use global circuit breaker manager
     this.circuitBreakerManager = globalCircuitBreakerManager;
+    
+    // Use global timeout manager
+    this.timeoutManager = globalTimeoutManager;
+    if (this.config.timeoutIntelligence) {
+      this.timeoutManager.updateConfig(this.config.timeoutIntelligence);
+    }
   }
 
   /**
@@ -193,10 +201,10 @@ export class WhenStep {
    */
   private async performHttpRequest(): Promise<import('./then.core').ThenStep> {
     const startTime = Date.now();
+    const requestDetails = this.context.getRequestDetails();
+    const url = this.buildUrl(requestDetails.path);
     
     try {
-      const requestDetails = this.context.getRequestDetails();
-      const url = this.buildUrl(requestDetails.path);
       
       const axiosConfig = this.buildAxiosConfig();
       
@@ -247,6 +255,14 @@ export class WhenStep {
       // Store successful response data globally for the reporter
       (global as any).__RESTIFIED_CURRENT_RESPONSE__ = httpResponse;
       
+      // Record response time for timeout intelligence
+      this.timeoutManager.recordResponseTime(
+        requestDetails.method,
+        url,
+        httpResponse.responseTime,
+        false // not timed out
+      );
+      
       this.context.setResponse(httpResponse);
       
       const { ThenStep } = require('./then.core');
@@ -267,6 +283,14 @@ export class WhenStep {
         
         // Store error response data globally for the reporter
         (global as any).__RESTIFIED_CURRENT_RESPONSE__ = httpResponse;
+        
+        // Record response time for timeout intelligence (error response)
+        this.timeoutManager.recordResponseTime(
+          requestDetails.method,
+          url,
+          httpResponse.responseTime,
+          false // not timed out, just error response
+        );
         
         this.context.setResponse(httpResponse);
         const { ThenStep } = require('./then.core');
@@ -291,6 +315,18 @@ export class WhenStep {
           code: error.code,
           type: error.constructor.name
         };
+        
+        // Record timeout event for timeout intelligence
+        const isTimeout = error.code === 'ECONNABORTED' || 
+                         error.message?.includes('timeout') || 
+                         error.message?.includes('ETIMEDOUT');
+        
+        this.timeoutManager.recordResponseTime(
+          requestDetails.method,
+          url,
+          errorHttpResponse.responseTime,
+          isTimeout
+        );
       }
       
       // Still throw the error to maintain existing behavior, but data is captured
@@ -313,10 +349,20 @@ export class WhenStep {
 
   private buildAxiosConfig(): any {
     const baseURL = this.config.baseURL || this.context.getConfig().baseURL || '';
+    const requestDetails = this.context.getRequestDetails();
+    const url = this.buildUrl(requestDetails.path);
+    
+    // Get intelligent timeout for this request
+    const intelligentTimeout = this.timeoutManager.getTimeoutForEndpoint(
+      requestDetails.method,
+      url,
+      this.config.timeout,
+      this.config.timeoutIntelligence
+    );
     
     // Start with base config
     const config: any = {
-      timeout: this.config.timeout || 30000,
+      timeout: intelligentTimeout,
       headers: { ...this.config.headers },
       validateStatus: () => true // Accept all status codes
     };

@@ -62,6 +62,7 @@ RestifiedTS is inspired by Java's RestAssured but built for the modern TypeScrip
 - **⚡ High-Performance**: HTTP/2 connection pooling for 20-40% faster requests
 - **🔄 Smart Retry System**: Exponential backoff with jitter for maximum reliability
 - **🛡️ Circuit Breaker Pattern**: Prevent cascade failures and protect downstream services
+- **🧠 Timeout Intelligence**: Context-aware timeouts with adaptive learning and pattern recognition
 - **📊 Comprehensive Reporting**: HTML, JSON, XML, JUnit, Excel with CI/CD integration
 - **🚀 Performance & Security**: Built-in K6, Artillery, and OWASP ZAP integration
 - **🌐 Multi-Client**: Test multiple microservices with shared authentication
@@ -1394,6 +1395,333 @@ describe('Circuit Breaker + Retry Integration', () => {
 ✅ **Comprehensive Monitoring**: Real-time circuit state and performance metrics  
 ✅ **Retry Integration**: Works seamlessly with retry system for layered resilience  
 ✅ **Enterprise Ready**: Perfect for microservices, distributed systems, and high availability scenarios
+
+### **🧠 Request Timeout Intelligence - Context-Aware Timeouts**
+
+RestifiedTS features **advanced timeout intelligence** that automatically adapts request timeouts based on endpoint patterns, historical performance data, and request types. No more guessing timeout values or dealing with arbitrary timeouts that are too short or too long.
+
+#### **🎯 1. Intelligent Pattern-Based Timeouts**
+
+```typescript
+// Automatic timeout assignment based on endpoint patterns
+const response = await restified.given()
+  .timeoutIntelligence({
+    enabled: true,               // Enable intelligent timeouts
+    patternMatching: true,       // Use pattern recognition
+    adaptiveTimeout: true,       // Learn from performance
+    learningEnabled: true,       // Enable performance learning
+    timeoutMultiplier: 2.5      // Safety multiplier for P95 times
+  })
+  .baseURL('https://api.example.com')
+.when()
+  .get('/search?q=products')     // Auto-detects search pattern → 20s timeout
+  .execute();
+
+// Different endpoints get different intelligent timeouts:
+// GET /users/123        → 5s (single item retrieval)
+// GET /users?page=1     → 10s (list/pagination) 
+// POST /users           → 15s (create operations)
+// GET /search           → 20s (search operations)
+// GET /analytics        → 45s (analytics/reports)
+// POST /upload          → 90s (file upload)
+// POST /export          → 120s (export/file generation)
+```
+
+#### **⚡ 2. Adaptive Learning from Performance**
+
+```typescript
+// Timeout intelligence learns from actual response times
+describe('Adaptive Timeout Learning', () => {
+  it('should adapt timeouts based on performance history', async () => {
+    // Reset stats for clean test
+    restified.resetTimeoutStats();
+    
+    // Make multiple requests to the same endpoint
+    for (let i = 0; i < 20; i++) {
+      await restified.given()
+        .timeoutIntelligence({
+          enabled: true,
+          adaptiveTimeout: true,
+          learningEnabled: true,
+          confidenceThreshold: 0.8  // High confidence needed for adaptation
+        })
+        .baseURL('https://api.example.com')
+      .when()
+        .get('/users')
+        .execute()
+      .then(response => response.statusCode(200));
+    }
+    
+    // Get learned timeout metrics
+    const metrics = restified.getTimeoutMetrics('GET:https://api.example.com/users');
+    console.log(`📊 Timeout Intelligence Analytics:`);
+    console.log(`   Original timeout: ${metrics.stats.averageResponseTime}ms`);
+    console.log(`   Current timeout: ${metrics.currentTimeout}ms`);
+    console.log(`   Recommended timeout: ${metrics.recommendedTimeout}ms`);
+    console.log(`   Confidence level: ${(metrics.confidenceLevel * 100).toFixed(1)}%`);
+    console.log(`   Performance trend: ${metrics.performanceTrend}`);
+    console.log(`   P95 response time: ${metrics.stats.p95ResponseTime}ms`);
+    console.log(`   Timeout rate: ${metrics.stats.timeoutRate}%`);
+  });
+});
+```
+
+#### **🌐 3. Global Timeout Intelligence Configuration**
+
+```typescript
+// Configure intelligent timeouts globally
+const restifiedWithTimeouts = new Restified({
+  timeoutIntelligence: {
+    enabled: true,
+    baseTimeout: 30000,           // Fallback timeout
+    adaptiveTimeout: true,        // Enable learning
+    learningEnabled: true,        // Track performance
+    patternMatching: true,        // Use endpoint patterns
+    minTimeout: 2000,            // Minimum allowed timeout
+    maxTimeout: 300000,          // Maximum allowed timeout (5 minutes)
+    confidenceThreshold: 0.8,    // Confidence needed for adaptation
+    optimizationInterval: 300000, // Auto-optimize every 5 minutes
+    timeoutMultiplier: 2.5       // P95 * 2.5 = timeout
+  },
+  retry: {
+    enabled: true,
+    maxAttempts: 3
+  },
+  circuitBreaker: {
+    enabled: true,
+    failureThreshold: 5
+  }
+});
+
+// All requests now benefit from intelligent timeouts
+const [userResponse, searchResponse, analyticsResponse] = await Promise.all([
+  restifiedWithTimeouts.given().baseURL('https://api.example.com')
+    .when().get('/users').execute(),          // ~5s timeout (single item)
+    
+  restifiedWithTimeouts.given().baseURL('https://api.example.com')
+    .when().get('/search?q=term').execute(),  // ~20s timeout (search)
+    
+  restifiedWithTimeouts.given().baseURL('https://api.example.com')
+    .when().get('/analytics/report').execute() // ~45s timeout (analytics)
+]);
+```
+
+#### **📊 4. Timeout Analytics and Recommendations**
+
+```typescript
+// Get intelligent recommendations for timeout optimization
+describe('Timeout Intelligence Analytics', () => {
+  it('should provide actionable timeout recommendations', async () => {
+    // Simulate various endpoint usage patterns
+    await simulateEndpointTraffic();
+    
+    // Get comprehensive timeout statistics
+    const allStats = restified.getTimeoutStats();
+    console.log(`📈 Monitoring ${allStats.size} endpoints:`);
+    
+    allStats.forEach((stats, endpointId) => {
+      console.log(`\n🔗 Endpoint: ${endpointId}`);
+      console.log(`   Requests: ${stats.totalRequests}`);
+      console.log(`   Avg Response Time: ${stats.averageResponseTime}ms`);
+      console.log(`   P95 Response Time: ${stats.p95ResponseTime}ms`);
+      console.log(`   P99 Response Time: ${stats.p99ResponseTime}ms`);
+      console.log(`   Timeout Rate: ${stats.timeoutRate.toFixed(2)}%`);
+      console.log(`   Fastest: ${stats.fastestResponseTime}ms`);
+      console.log(`   Slowest: ${stats.slowestResponseTime}ms`);
+    });
+    
+    // Get intelligent recommendations
+    const recommendations = restified.getTimeoutRecommendations();
+    console.log(`\n💡 Timeout Optimization Recommendations:`);
+    
+    recommendations.forEach((rec, index) => {
+      console.log(`\n${index + 1}. ${rec.endpointId}`);
+      console.log(`   Action: ${rec.action.toUpperCase()} timeout`);
+      console.log(`   Current: ${rec.currentTimeout}ms → Recommended: ${rec.recommendedTimeout}ms`);
+      console.log(`   Reason: ${rec.reason}`);
+      console.log(`   Confidence: ${(rec.confidence * 100).toFixed(1)}%`);
+      console.log(`   Impact: ${rec.impact.toUpperCase()}`);
+    });
+  });
+
+  async function simulateEndpointTraffic() {
+    const endpoints = [
+      { path: '/users', count: 50 },
+      { path: '/users/123', count: 30 },
+      { path: '/search?q=test', count: 25 },
+      { path: '/analytics/dashboard', count: 15 },
+      { path: '/export/csv', count: 10 }
+    ];
+    
+    for (const endpoint of endpoints) {
+      for (let i = 0; i < endpoint.count; i++) {
+        try {
+          await restified.given()
+            .timeoutIntelligence({ enabled: true })
+            .baseURL('https://api.example.com')
+          .when()
+            .get(endpoint.path)
+            .execute();
+        } catch (error) {
+          // Continue simulation even with errors
+        }
+      }
+    }
+  }
+});
+```
+
+#### **🏭 5. Enterprise Endpoint Pattern Customization**
+
+```typescript
+// Add custom patterns for specialized business endpoints
+describe('Custom Timeout Patterns', () => {
+  it('should support custom enterprise patterns', async () => {
+    // Add custom patterns for your business domain
+    restified.addTimeoutPattern({
+      name: 'machine-learning',
+      pattern: /\/ml\/|\/ai\/|\/predict/i,
+      methods: ['POST'],
+      baseTimeout: 45000,
+      multiplier: 3.0,
+      description: 'ML inference endpoints need more time'
+    });
+    
+    restified.addTimeoutPattern({
+      name: 'blockchain',
+      pattern: /\/blockchain\/|\/crypto\/|\/wallet/i,
+      methods: ['GET', 'POST'],
+      baseTimeout: 30000,
+      multiplier: 2.0,
+      description: 'Blockchain operations can be slow'
+    });
+    
+    restified.addTimeoutPattern({
+      name: 'video-processing',
+      pattern: /\/video\/process|\/media\/convert/i,
+      methods: ['POST', 'PUT'],
+      baseTimeout: 180000, // 3 minutes
+      multiplier: 4.0,
+      description: 'Video processing takes significant time'
+    });
+    
+    // Test endpoints now automatically get appropriate timeouts
+    const mlResponse = await restified.given()
+      .timeoutIntelligence({ enabled: true })
+      .baseURL('https://ml-api.company.com')
+    .when()
+      .post('/ml/predict', { data: 'model input' }) // Gets 45s * 3.0 = 135s timeout
+      .execute();
+      
+    const videoResponse = await restified.given()
+      .timeoutIntelligence({ enabled: true })
+      .baseURL('https://media-api.company.com')
+    .when()
+      .post('/video/process', { file: 'video.mp4' }) // Gets 180s * 4.0 = 720s timeout
+      .execute();
+  });
+});
+```
+
+#### **📈 6. Performance Trend Analysis**
+
+```typescript
+// Monitor performance trends and timeout effectiveness
+describe('Performance Trend Monitoring', () => {
+  it('should track performance trends over time', async () => {
+    const endpointId = 'GET:https://api.example.com/users';
+    
+    // Simulate performance over time
+    await simulatePerformanceTrend(endpointId);
+    
+    // Get detailed metrics
+    const metrics = restified.getTimeoutMetrics(endpointId);
+    
+    console.log(`📈 Performance Analysis for ${endpointId}:`);
+    console.log(`   Current Timeout: ${metrics.currentTimeout}ms`);
+    console.log(`   Recommended Timeout: ${metrics.recommendedTimeout}ms`);
+    console.log(`   Adaptive Multiplier: ${metrics.adaptiveMultiplier.toFixed(2)}x`);
+    console.log(`   Confidence Level: ${(metrics.confidenceLevel * 100).toFixed(1)}%`);
+    console.log(`   Performance Trend: ${metrics.performanceTrend.toUpperCase()}`);
+    console.log(`   Optimization Count: ${metrics.optimizationCount}`);
+    
+    // Apply recommendations if confidence is high
+    if (metrics.confidenceLevel > 0.8) {
+      console.log(`✅ High confidence - applying recommended timeout`);
+      restified.setTimeoutForEndpoint('GET', '/users', metrics.recommendedTimeout);
+    } else {
+      console.log(`⚠️ Low confidence - keeping current timeout`);
+    }
+    
+    // Verify current timeout
+    const currentTimeout = restified.getCurrentTimeout('GET', '/users');
+    console.log(`🔧 Active timeout: ${currentTimeout}ms`);
+  });
+  
+  async function simulatePerformanceTrend(endpointId: string) {
+    // Simulate degrading then improving performance
+    const phases = [
+      { duration: 10, baseTime: 200 },  // Fast phase
+      { duration: 15, baseTime: 800 },  // Slow phase  
+      { duration: 20, baseTime: 300 }   // Recovery phase
+    ];
+    
+    for (const phase of phases) {
+      for (let i = 0; i < phase.duration; i++) {
+        const responseTime = phase.baseTime + (Math.random() * 200);
+        restified.getTimeoutManager().recordResponseTime('GET', '/users', responseTime, false);
+      }
+    }
+  }
+});
+```
+
+#### **🏥 7. Integration with Circuit Breaker and Retry**
+
+```typescript
+// Timeout intelligence works seamlessly with other resilience patterns
+describe('Integrated Resilience Stack', () => {
+  it('should provide layered timeout protection', async () => {
+    const response = await restified.given()
+      .timeoutIntelligence({
+        enabled: true,
+        adaptiveTimeout: true,
+        patternMatching: true
+      })
+      .retry({
+        enabled: true,
+        maxAttempts: 3,
+        baseDelay: 1000
+      })
+      .circuitBreaker({
+        enabled: true,
+        failureThreshold: 5,
+        requestVolumeThreshold: 10
+      })
+      .baseURL('https://resilient-api.example.com')
+    .when()
+      .get('/protected-endpoint')
+      .execute();
+
+    // Layered protection:
+    // 1. Intelligent Timeout: Automatically sets optimal timeout based on endpoint pattern
+    // 2. Retry System: Retries failed requests with exponential backoff
+    // 3. Circuit Breaker: Prevents cascade failures when service is down
+    // 4. Connection Pool: Reuses connections for performance
+
+    response.statusCode(200);
+  });
+});
+```
+
+✅ **Pattern Recognition**: 12+ built-in endpoint patterns (CRUD, search, analytics, uploads, etc.)  
+✅ **Adaptive Learning**: Learns from response times and optimizes timeouts automatically  
+✅ **Performance Tracking**: P50, P95, P99 response time analysis with trend detection  
+✅ **Confidence-Based**: Only applies learned timeouts when confidence threshold is met  
+✅ **Timeout Recommendations**: Provides actionable insights for timeout optimization  
+✅ **Custom Patterns**: Add business-specific endpoint patterns for specialized timeouts  
+✅ **Global Configuration**: Set intelligent defaults for entire application  
+✅ **Integration Ready**: Works seamlessly with retry system and circuit breaker
 
 ### **🚀 HTTP Connection Pooling & Performance**
 

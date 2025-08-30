@@ -30,6 +30,8 @@ export interface RequestConfig {
   retry?: RetryConfig;
   /** Circuit breaker configuration for resilience */
   circuitBreaker?: CircuitBreakerConfig;
+  /** Intelligent timeout configuration for context-aware timeouts */
+  timeoutIntelligence?: TimeoutConfig;
 }
 
 /**
@@ -313,6 +315,8 @@ export interface RestifiedConfig {
   connectionPool?: ConnectionPoolConfig;
   /** Global circuit breaker configuration */
   circuitBreaker?: CircuitBreakerConfig;
+  /** Global timeout intelligence configuration */
+  timeoutIntelligence?: TimeoutConfig;
   clients?: Record<string, RequestConfig>;
   hooks?: {
     globalSetup?: () => Promise<void>;
@@ -655,3 +659,90 @@ export interface CircuitBreakerConfig {
  * Circuit Breaker states
  */
 export type CircuitBreakerState = 'CLOSED' | 'OPEN' | 'HALF_OPEN';
+
+/**
+ * Request Timeout Intelligence configuration for context-aware timeouts
+ * @interface TimeoutConfig
+ * @example
+ * ```typescript
+ * const timeoutConfig: TimeoutConfig = {
+ *   enabled: true,
+ *   baseTimeout: 30000,
+ *   adaptiveTimeout: true,
+ *   learningEnabled: true,
+ *   patternMatching: true
+ * };
+ * ```
+ */
+export interface TimeoutConfig {
+  /** Enable intelligent timeout management (default: true) */
+  enabled?: boolean;
+  /** Base timeout in milliseconds (default: 30000) */
+  baseTimeout?: number;
+  /** Enable adaptive timeout based on historical performance (default: true) */
+  adaptiveTimeout?: boolean;
+  /** Enable learning from response times and timeout events (default: true) */
+  learningEnabled?: boolean;
+  /** Minimum allowed timeout in milliseconds (default: 1000) */
+  minTimeout?: number;
+  /** Maximum allowed timeout in milliseconds (default: 300000) */
+  maxTimeout?: number;
+  /** Confidence threshold for applying adaptive timeouts (default: 0.8) */
+  confidenceThreshold?: number;
+  /** Interval for automatic timeout optimization in milliseconds (default: 300000) */
+  optimizationInterval?: number;
+  /** Enable endpoint pattern matching for smart timeout assignment (default: true) */
+  patternMatching?: boolean;
+  /** Enable performance tracking for timeout intelligence (default: true) */
+  performanceTracking?: boolean;
+  /** Multiplier for calculating timeout from P95 response time (default: 2.5) */
+  timeoutMultiplier?: number;
+  /** Threshold for considering a request as slow (0.0-1.0 of timeout) (default: 0.8) */
+  slowRequestThreshold?: number;
+}
+
+/**
+ * Endpoint pattern for intelligent timeout assignment
+ * @interface EndpointPattern
+ * @example
+ * ```typescript
+ * const searchPattern: EndpointPattern = {
+ *   name: 'search',
+ *   pattern: /\/search($|\/|\?)/i,
+ *   methods: ['GET', 'POST'],
+ *   baseTimeout: 20000,
+ *   multiplier: 2.0,
+ *   description: 'Search operations typically need more time'
+ * };
+ * ```
+ */
+export interface EndpointPattern {
+  /** Pattern name for identification */
+  name: string;
+  /** Regular expression to match endpoint URLs */
+  pattern: RegExp;
+  /** HTTP methods this pattern applies to */
+  methods: string[];
+  /** Base timeout for this pattern in milliseconds */
+  baseTimeout?: number;
+  /** Multiplier to apply to base timeout */
+  multiplier?: number;
+  /** Description of what this pattern matches */
+  description?: string;
+}
+
+/**
+ * Timeout profile for specific endpoint types
+ */
+export interface TimeoutProfile {
+  /** Profile name */
+  name: string;
+  /** Base timeout for this profile */
+  baseTimeout: number;
+  /** Adaptive multiplier */
+  multiplier: number;
+  /** Whether to enable learning for this profile */
+  learningEnabled: boolean;
+  /** Pattern matching rules */
+  patterns?: EndpointPattern[];
+}

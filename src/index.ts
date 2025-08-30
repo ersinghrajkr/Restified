@@ -31,6 +31,8 @@ export { RetryManager, globalRetryManager } from './core/network/RetryManager';
 export type { RetryConfig, RetryStats } from './core/network/RetryManager';
 export { CircuitBreakerManager, globalCircuitBreakerManager } from './core/network/CircuitBreakerManager';
 export type { CircuitBreakerStats, CircuitBreakerMetrics } from './core/network/CircuitBreakerManager';
+export { TimeoutManager, globalTimeoutManager } from './core/network/TimeoutManager';
+export type { TimeoutStats, TimeoutMetrics, TimeoutRecommendation } from './core/network/TimeoutManager';
 export { DatabaseClient } from './core/database/DatabaseClient';
 export { PostgreSQLClient } from './core/database/PostgreSQLClient';
 export { MongoDBClient } from './core/database/MongoDBClient';

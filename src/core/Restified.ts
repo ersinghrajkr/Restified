@@ -16,6 +16,7 @@ import { gracefulConfigManager } from './config/GracefulConfigManager';
 import { globalConnectionManager, ConnectionStats } from './network/ConnectionManager';
 import { globalRetryManager } from './network/RetryManager';
 import { globalCircuitBreakerManager, CircuitBreakerStats, CircuitBreakerMetrics } from './network/CircuitBreakerManager';
+import { globalTimeoutManager, TimeoutStats, TimeoutMetrics, TimeoutRecommendation } from './network/TimeoutManager';
 import RestifiedHtmlReporter = require('../reporting/restified-html-reporter');
 import { RestifiedConfig, RequestConfig, HttpResponse, AssertionResult, AuthConfig } from '../RestifiedTypes';
 
@@ -937,6 +938,140 @@ export class Restified {
    */
   getAllCircuitIds(): string[] {
     return globalCircuitBreakerManager.getAllCircuitIds();
+  }
+
+  /**
+   * Get timeout statistics for all endpoints or a specific endpoint
+   * @param {string} [endpointId] - Optional endpoint ID to get specific stats
+   * @returns {Map<string, TimeoutStats> | TimeoutStats | null} Timeout statistics
+   * @example
+   * ```typescript
+   * const allStats = restified.getTimeoutStats();
+   * const apiStats = restified.getTimeoutStats('GET:https://api.example.com/users');
+   * if (apiStats) {
+   *   console.log(`Average response time: ${apiStats.averageResponseTime}ms`);
+   *   console.log(`P95 response time: ${apiStats.p95ResponseTime}ms`);
+   *   console.log(`Timeout rate: ${apiStats.timeoutRate}%`);
+   * }
+   * ```
+   */
+  getTimeoutStats(endpointId?: string): Map<string, TimeoutStats> | TimeoutStats | null {
+    return globalTimeoutManager.getTimeoutStats(endpointId);
+  }
+
+  /**
+   * Get timeout metrics with performance analysis for a specific endpoint
+   * @param {string} endpointId - Endpoint ID to get metrics for
+   * @returns {TimeoutMetrics | null} Timeout metrics or null if not found
+   * @example
+   * ```typescript
+   * const metrics = restified.getTimeoutMetrics('GET:https://api.example.com/search');
+   * if (metrics) {
+   *   console.log(`Current timeout: ${metrics.currentTimeout}ms`);
+   *   console.log(`Recommended timeout: ${metrics.recommendedTimeout}ms`);
+   *   console.log(`Performance trend: ${metrics.performanceTrend}`);
+   *   console.log(`Confidence level: ${(metrics.confidenceLevel * 100).toFixed(1)}%`);
+   * }
+   * ```
+   */
+  getTimeoutMetrics(endpointId: string): TimeoutMetrics | null {
+    return globalTimeoutManager.getTimeoutMetrics(endpointId);
+  }
+
+  /**
+   * Get intelligent timeout recommendations for all endpoints
+   * @returns {TimeoutRecommendation[]} Array of timeout recommendations
+   * @example
+   * ```typescript
+   * const recommendations = restified.getTimeoutRecommendations();
+   * recommendations.forEach(rec => {
+   *   console.log(`${rec.endpointId}: ${rec.action} timeout to ${rec.recommendedTimeout}ms`);
+   *   console.log(`Reason: ${rec.reason}`);
+   *   console.log(`Confidence: ${(rec.confidence * 100).toFixed(1)}%`);
+   *   console.log(`Impact: ${rec.impact}`);
+   * });
+   * ```
+   */
+  getTimeoutRecommendations(): TimeoutRecommendation[] {
+    return globalTimeoutManager.getTimeoutRecommendations();
+  }
+
+  /**
+   * Reset timeout statistics for all endpoints or a specific endpoint
+   * @param {string} [endpointId] - Optional endpoint ID to reset specific endpoint
+   * @example
+   * ```typescript
+   * restified.resetTimeoutStats(); // Reset all endpoints
+   * restified.resetTimeoutStats('GET:https://api.example.com/users'); // Reset specific endpoint
+   * ```
+   */
+  resetTimeoutStats(endpointId?: string): void {
+    globalTimeoutManager.resetStats(endpointId);
+  }
+
+  /**
+   * Set custom timeout for a specific endpoint (overrides intelligent timeout)
+   * @param {string} method - HTTP method
+   * @param {string} url - Endpoint URL
+   * @param {number} timeout - Timeout in milliseconds
+   * @example
+   * ```typescript
+   * restified.setTimeoutForEndpoint('POST', '/upload', 120000); // 2 minutes for uploads
+   * restified.setTimeoutForEndpoint('GET', '/analytics', 60000);  // 1 minute for analytics
+   * ```
+   */
+  setTimeoutForEndpoint(method: string, url: string, timeout: number): void {
+    globalTimeoutManager.setTimeoutForEndpoint(method, url, timeout);
+  }
+
+  /**
+   * Get current effective timeout for an endpoint
+   * @param {string} method - HTTP method
+   * @param {string} url - Endpoint URL
+   * @returns {number | null} Current timeout in milliseconds or null if not set
+   * @example
+   * ```typescript
+   * const timeout = restified.getCurrentTimeout('GET', '/users');
+   * console.log(`Current timeout for GET /users: ${timeout}ms`);
+   * ```
+   */
+  getCurrentTimeout(method: string, url: string): number | null {
+    return globalTimeoutManager.getCurrentTimeout(method, url);
+  }
+
+  /**
+   * Get all tracked endpoint IDs for timeout intelligence
+   * @returns {string[]} Array of endpoint IDs
+   * @example
+   * ```typescript
+   * const endpoints = restified.getAllTimeoutEndpoints();
+   * endpoints.forEach(endpointId => {
+   *   const metrics = restified.getTimeoutMetrics(endpointId);
+   *   console.log(`${endpointId}: ${metrics?.currentTimeout}ms`);
+   * });
+   * ```
+   */
+  getAllTimeoutEndpoints(): string[] {
+    return globalTimeoutManager.getAllEndpointIds();
+  }
+
+  /**
+   * Add custom endpoint pattern for intelligent timeout assignment
+   * @param {import('../RestifiedTypes').EndpointPattern} pattern - Endpoint pattern configuration
+   * @example
+   * ```typescript
+   * restified.addTimeoutPattern({
+   *   name: 'ml-inference',
+   *   pattern: /\/ml\/predict|\/ai\/inference/i,
+   *   methods: ['POST'],
+   *   baseTimeout: 45000,
+   *   multiplier: 3.0,
+   *   description: 'Machine learning inference endpoints'
+   * });
+   * ```
+   */
+  addTimeoutPattern(pattern: import('../RestifiedTypes').EndpointPattern): void {
+    globalTimeoutManager.addEndpointPattern(pattern);
   }
 
   // Enhanced cleanup method

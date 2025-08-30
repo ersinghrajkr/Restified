@@ -1,4 +1,4 @@
-import { AuthConfig, RequestConfig, ConnectionPoolConfig, RetryConfig, CircuitBreakerConfig } from '../../RestifiedTypes';
+import { AuthConfig, RequestConfig, ConnectionPoolConfig, RetryConfig, CircuitBreakerConfig, TimeoutConfig } from '../../RestifiedTypes';
 
 export class GivenStep {
   private config: RequestConfig = {};
@@ -21,6 +21,11 @@ export class GivenStep {
     // Apply global circuit breaker configuration if set
     if (globalConfig.circuitBreaker) {
       this.config.circuitBreaker = { ...globalConfig.circuitBreaker };
+    }
+    
+    // Apply global timeout intelligence configuration if set
+    if (globalConfig.timeoutIntelligence) {
+      this.config.timeoutIntelligence = { ...globalConfig.timeoutIntelligence };
     }
   }
 
@@ -256,6 +261,31 @@ export class GivenStep {
    */
   circuitBreaker(config: CircuitBreakerConfig): this {
     this.config.circuitBreaker = config;
+    return this;
+  }
+
+  /**
+   * Configure Request Timeout Intelligence for context-aware timeouts
+   * @param {TimeoutConfig} config - Timeout intelligence configuration
+   * @returns {this} GivenStep instance for method chaining
+   * @example
+   * ```typescript
+   * restified.given()
+   *   .timeoutIntelligence({
+   *     enabled: true,
+   *     baseTimeout: 30000,
+   *     adaptiveTimeout: true,
+   *     learningEnabled: true,
+   *     patternMatching: true,
+   *     timeoutMultiplier: 2.5
+   *   })
+   *   .baseURL('https://api.example.com')
+   * .when()
+   *   .get('/search?q=products')  // Will use longer timeout for search endpoints
+   * ```
+   */
+  timeoutIntelligence(config: TimeoutConfig): this {
+    this.config.timeoutIntelligence = config;
     return this;
   }
 
