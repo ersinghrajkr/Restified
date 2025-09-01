@@ -74,6 +74,16 @@ class RestifiedHtmlReporterImpl {
   private static requestResponseCache: Map<string, any> = new Map();
   private static currentTestId: string = '';
   private static processedTests: Set<string> = new Set();
+  // 🎯 Runtime data captured at the end of test execution
+  private static runtimeDataCapture: {
+    runtimeVariables: any;
+    environmentVariables: any;
+    restifiedConfig: any;
+  } = {
+    runtimeVariables: { global: {}, local: {}, extracted: {} },
+    environmentVariables: {},
+    restifiedConfig: {}
+  };
   
   private static suiteInfo = {
     title: 'Restified Test Report',
@@ -162,6 +172,9 @@ class RestifiedHtmlReporterImpl {
       this.suiteInfo.endTime = new Date();
       this.suiteInfo.duration = this.suiteInfo.endTime.getTime() - this.suiteInfo.startTime.getTime();
       this.suiteInfo.total = this.testResults.length;
+      
+      // 🎯 CRITICAL: Capture runtime variables at the end of all test execution
+      this.captureRuntimeDataForReport();
       
       const memoryUsage = this.getMemoryUsage();
       console.log('📊 Generating Enhanced Restified HTML Report...');
@@ -258,6 +271,32 @@ class RestifiedHtmlReporterImpl {
       tests: this.testResults.length,
       memoryMB: Math.round(used.heapUsed / 1024 / 1024 * 100) / 100
     };
+  }
+  
+  // 🎯 CRITICAL: Capture runtime data at the end of all test execution
+  private static captureRuntimeDataForReport(): void {
+    console.log('🔍 Capturing runtime variables and configuration at test completion...');
+    
+    try {
+      const restifiedInstance = this.getRestifiedInstance();
+      
+      // Capture all runtime data when tests are complete
+      this.runtimeDataCapture.runtimeVariables = this.captureRuntimeVariables(restifiedInstance);
+      this.runtimeDataCapture.environmentVariables = this.captureEnvironmentVariables();
+      this.runtimeDataCapture.restifiedConfig = this.captureRestifiedConfig(restifiedInstance);
+      
+      if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+        console.log('🎯 Runtime data captured:');
+        console.log('  - Global variables:', Object.keys(this.runtimeDataCapture.runtimeVariables.global || {}).length, JSON.stringify(Object.keys(this.runtimeDataCapture.runtimeVariables.global || {})));
+        console.log('  - Local variables:', Object.keys(this.runtimeDataCapture.runtimeVariables.local || {}).length, JSON.stringify(Object.keys(this.runtimeDataCapture.runtimeVariables.local || {})));
+        console.log('  - Extracted variables:', Object.keys(this.runtimeDataCapture.runtimeVariables.extracted || {}).length, JSON.stringify(Object.keys(this.runtimeDataCapture.runtimeVariables.extracted || {})));
+        console.log('  - Environment variables:', Object.keys(this.runtimeDataCapture.environmentVariables || {}).length);
+        console.log('  - Config sections:', Object.keys(this.runtimeDataCapture.restifiedConfig || {}).length, JSON.stringify(Object.keys(this.runtimeDataCapture.restifiedConfig || {})));
+      }
+    } catch (error) {
+      console.warn('⚠️ Could not capture runtime data for report:', error.message);
+      // Keep default empty values
+    }
   }
   
   private static detectLargeReportMode(): void {
@@ -1225,6 +1264,9 @@ ${hookCode}${error}`;
   private static generateOptimizedHtml(groupedTests: any, suiteGroups: any, suiteStats: any): string {
     console.log('🚀 Generating optimized HTML for large report...');
     
+    // Use runtime data captured at the end of test execution
+    const { runtimeVariables, environmentVariables, restifiedConfig } = this.runtimeDataCapture;
+    
     // Use RestifiedTemplateEngine with virtual scrolling enabled
     const templateEngine = new RestifiedTemplateEngine();
     
@@ -1269,6 +1311,10 @@ ${hookCode}${error}`;
         pending: this.suiteInfo.pending
       },
       suites: optimizedSuites,
+      // Add the captured data for the modals
+      runtimeVariables,
+      environmentVariables,
+      restifiedConfig,
       metadata: {
         title: this.reportConfig?.title || 'RestifiedTS Enterprise API Test Results',
         subtitle: this.reportConfig?.subtitle || 'Enterprise API Testing with Advanced Features',
@@ -1491,6 +1537,9 @@ ${hookCode}${error}`;
     const failedTests = this.suiteInfo.failed; 
     const pendingTests = this.suiteInfo.pending;
 
+    // Use runtime data captured at the end of test execution
+    const { runtimeVariables, environmentVariables, restifiedConfig } = this.runtimeDataCapture;
+
     // Build suite data structure for RestifiedTemplateEngine
     const reportData = {
       stats: {
@@ -1513,6 +1562,10 @@ ${hookCode}${error}`;
           }
         };
       }),
+      // Add the captured data for the modals
+      runtimeVariables,
+      environmentVariables,
+      restifiedConfig,
       metadata: {
         title: this.reportConfig?.title || 'RestifiedTS Enterprise API Test Results',
         subtitle: this.reportConfig?.subtitle || 'Enterprise API Testing with Advanced Features and Analytics',
@@ -1551,6 +1604,402 @@ ${hookCode}${error}`;
     const templateEngine = new RestifiedTemplateEngine();
     templateEngine.setConfig(reportData.config);
     return templateEngine.generateReport(reportData);
+  }
+
+  // Helper methods to capture runtime data for modals
+  private static getRestifiedInstance(): any {
+    try {
+      // Method 1: Try to get from global scope
+      const globalRestified = (global as any).restified || (global as any).__RESTIFIED_INSTANCE__;
+      if (globalRestified) {
+        return globalRestified;
+      }
+
+      // Method 2: Try to find the EXACT same instance used by examples/tests
+      try {
+        // This is the path examples use: import { restified } from '../../src/index'
+        const indexModule = require('../index');  // From reporter perspective, this is the main index
+        if (indexModule && indexModule.restified) {
+          return indexModule.restified;
+        }
+        if (indexModule.default && typeof indexModule.default === 'object' && indexModule.default.restified) {
+          return indexModule.default.restified;
+        }
+      } catch (importError) {
+        if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+          console.log('⚠️ Method 2 - Could not import from ../index:', importError.message);
+        }
+      }
+
+      // Method 3: Try from main Restified module (direct export)
+      try {
+        const { restified: defaultInstance } = require('../core/Restified');
+        if (defaultInstance) {
+          return defaultInstance;
+        }
+      } catch (importError) {
+        if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+          console.log('⚠️ Method 3 - Could not import from ../core/Restified:', importError.message);
+        }
+      }
+
+      // Method 4: Try module cache search for the actual used instance
+      try {
+        const Module = require('module');
+        const moduleIds = Object.keys(Module._cache);
+        
+        // Look for the main index file that examples import from
+        for (const moduleId of moduleIds) {
+          if (moduleId.includes('index.js') && moduleId.includes('src') && !moduleId.includes('node_modules')) {
+            const module = Module._cache[moduleId];
+            if (module && module.exports && module.exports.restified) {
+              if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+                console.log('🔍 Method 4 - Found restified instance in:', moduleId);
+              }
+              return module.exports.restified;
+            }
+          }
+        }
+        
+        // Look for core Restified module
+        for (const moduleId of moduleIds) {
+          if (moduleId.includes('Restified.js') && !moduleId.includes('Reporter')) {
+            const module = Module._cache[moduleId];
+            if (module && module.exports) {
+              if (module.exports.restified) {
+                return module.exports.restified;
+              }
+              if (module.exports.default && module.exports.default.restified) {
+                return module.exports.default.restified;
+              }
+            }
+          }
+        }
+      } catch (cacheError) {
+        if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+          console.log('⚠️ Method 4 cache error:', cacheError.message);
+        }
+      }
+
+      return null;
+    } catch (error) {
+      console.warn('Could not access Restified instance for modal data:', error.message);
+      return null;
+    }
+  }
+
+  private static captureRuntimeVariables(restifiedInstance: any): any {
+    try {
+      let variables = { global: {}, local: {}, extracted: {} };
+
+      // Method 1: Check for variable snapshot saved during dumpVariables()
+      const snapshot = (global as any).__RESTIFIED_VARIABLE_SNAPSHOT__;
+      if (snapshot) {
+        variables = {
+          global: snapshot.global || {},
+          local: snapshot.local || {},
+          extracted: snapshot.extracted || {}
+        };
+        
+        if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+          console.log('✅ Method 1 - Using VARIABLE SNAPSHOT from dumpVariables():');
+          console.log('  - Captured at:', snapshot.capturedAt);
+          console.log('  - Global vars:', Object.keys(variables.global).length, JSON.stringify(Object.keys(variables.global)));
+          console.log('  - Local vars:', Object.keys(variables.local).length, JSON.stringify(Object.keys(variables.local)));
+          console.log('  - Extracted vars:', Object.keys(variables.extracted).length, JSON.stringify(Object.keys(variables.extracted)));
+        }
+        
+        // Clear the snapshot to prevent stale data
+        delete (global as any).__RESTIFIED_VARIABLE_SNAPSHOT__;
+        
+        return variables;
+      }
+
+      // Method 2: Try to get from Restified instance (fallback)
+      if (restifiedInstance && restifiedInstance.variableStore) {
+        const variableStore = restifiedInstance.variableStore;
+        variables = {
+          global: variableStore.getGlobalVariables ? variableStore.getGlobalVariables() : {},
+          local: variableStore.getLocalVariables ? variableStore.getLocalVariables() : {},
+          extracted: variableStore.getExtractedVariables ? variableStore.getExtractedVariables() : {}
+        };
+        
+        if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+          console.log('🔄 Method 2 - Using current variable store state:');
+          console.log('  - Global vars:', Object.keys(variables.global).length, JSON.stringify(Object.keys(variables.global)));
+          console.log('  - Local vars:', Object.keys(variables.local).length, JSON.stringify(Object.keys(variables.local)));
+          console.log('  - Extracted vars:', Object.keys(variables.extracted).length, JSON.stringify(Object.keys(variables.extracted)));
+        }
+      }
+
+      // Method 2: Try to access global variables if instance method didn't work
+      if (Object.keys(variables.global).length === 0 && Object.keys(variables.local).length === 0) {
+        // Check for global variable stores
+        const globalVarStore = (global as any).__RESTIFIED_GLOBAL_VARIABLES__ || {};
+        const localVarStore = (global as any).__RESTIFIED_LOCAL_VARIABLES__ || {};
+        const extractedVarStore = (global as any).__RESTIFIED_EXTRACTED_VARIABLES__ || {};
+
+        variables.global = { ...variables.global, ...globalVarStore };
+        variables.local = { ...variables.local, ...localVarStore };
+        variables.extracted = { ...variables.extracted, ...extractedVarStore };
+      }
+
+      // Method 3: Try to access the SAME instance that tests are using
+      try {
+        const testInstance = this.getRestifiedInstance();
+        if (testInstance && testInstance.variableStore) {
+          const store = testInstance.variableStore;
+          const globalVars = store.getGlobalVariables ? store.getGlobalVariables() : {};
+          const localVars = store.getLocalVariables ? store.getLocalVariables() : {};
+          const extractedVars = store.getExtractedVariables ? store.getExtractedVariables() : {};
+          
+          // Use these as the primary source (don't merge, replace)
+          variables.global = globalVars;
+          variables.local = localVars;
+          variables.extracted = extractedVars;
+          
+          if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+            console.log('✅ Method 3 - Found TEST INSTANCE with variables:');
+            console.log('  - Instance type:', typeof testInstance);
+            console.log('  - Has variableStore:', !!testInstance.variableStore);
+            console.log('  - Global vars:', Object.keys(globalVars).length, JSON.stringify(Object.keys(globalVars)));
+            console.log('  - Local vars:', Object.keys(localVars).length, JSON.stringify(Object.keys(localVars)));
+            console.log('  - Extracted vars:', Object.keys(extractedVars).length, JSON.stringify(Object.keys(extractedVars)));
+          }
+        } else {
+          if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+            console.log('❌ Method 3 - Could not find test instance or variable store');
+            console.log('  - testInstance:', !!testInstance);
+            console.log('  - variableStore:', testInstance ? !!testInstance.variableStore : 'N/A');
+          }
+        }
+      } catch (importError) {
+        if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+          console.log('⚠️ Method 3 error accessing test instance:', importError.message);
+        }
+      }
+
+      // Method 4: Check for any test context variables that may have been stored
+      const testContextVars = (global as any).__RESTIFIED_TEST_VARIABLES__ || {};
+      if (Object.keys(testContextVars).length > 0) {
+        variables.global = { ...variables.global, ...testContextVars };
+      }
+
+      // Method 5: Fallback - create sample variables if still empty (for demonstration)
+      if (Object.keys(variables.global).length === 0 && 
+          Object.keys(variables.local).length === 0) {
+        
+        // Add current test execution info as variables
+        variables.global = {
+          testExecutionTime: new Date().toISOString(),
+          testFramework: 'RestifiedTS',
+          reporterVersion: '2.2.0'
+        };
+
+        // Add any process-level test variables
+        Object.keys(process.env).forEach(key => {
+          if (key.startsWith('TEST_') || key.startsWith('RESTIFIED_')) {
+            variables.global[key] = process.env[key];
+          }
+        });
+      }
+
+      // Always set extracted as placeholder (as requested by user)
+      if (Object.keys(variables.extracted).length === 0) {
+        variables.extracted = {
+          'placeholder': 'Extracted variables will be captured during test execution'
+        };
+      }
+
+      return variables;
+    } catch (error) {
+      console.warn('Could not capture runtime variables:', error.message);
+      return { 
+        global: { 
+          error: 'Could not access runtime variables',
+          timestamp: new Date().toISOString() 
+        }, 
+        local: {}, 
+        extracted: {} 
+      };
+    }
+  }
+
+  private static captureEnvironmentVariables(): any {
+    try {
+      // Capture ALL environment variables (200+) with sensitive data masking
+      const envVars: any = {};
+      const sensitiveKeys = ['PASSWORD', 'SECRET', 'KEY', 'TOKEN', 'PRIVATE', 'AUTH', 'CREDENTIAL'];
+      
+      Object.keys(process.env).forEach(key => {
+        const isSensitive = sensitiveKeys.some(sensitive => key.toUpperCase().includes(sensitive));
+        
+        if (isSensitive) {
+          // Mask sensitive environment variables
+          const value = process.env[key];
+          if (value && value.length > 0) {
+            envVars[key] = '*'.repeat(Math.min(value.length, 12));
+          } else {
+            envVars[key] = '***MASKED***';
+          }
+        } else {
+          // Include all non-sensitive environment variables
+          envVars[key] = process.env[key];
+        }
+      });
+      
+      return envVars;
+    } catch (error) {
+      console.warn('Could not capture environment variables:', error.message);
+      return {};
+    }
+  }
+
+  private static captureRestifiedConfig(restifiedInstance: any): any {
+    try {
+      if (!restifiedInstance) {
+        // Try to load the complete restified.config.ts if instance is not available
+        return this.loadRestifiedConfigFile();
+      }
+
+      // Get the complete configuration object
+      const config = restifiedInstance.getConfig ? restifiedInstance.getConfig() : {};
+      
+      // If config is empty or minimal, try loading from file
+      if (!config || Object.keys(config).length < 5) {
+        const fileConfig = this.loadRestifiedConfigFile();
+        if (fileConfig && Object.keys(fileConfig).length > 0) {
+          // Merge instance config with file config for complete picture
+          const completeConfig = { ...fileConfig, ...config };
+          return this.sanitizeConfigForDisplay(completeConfig);
+        }
+      }
+      
+      // Clean sensitive data from config before displaying
+      const cleanConfig = this.sanitizeConfigForDisplay(config);
+      
+      return cleanConfig;
+    } catch (error) {
+      console.warn('Could not capture Restified configuration:', error.message);
+      // Fallback: try to load from config file
+      return this.loadRestifiedConfigFile();
+    }
+  }
+
+  private static loadRestifiedConfigFile(): any {
+    try {
+      // Try to load the complete restified.config.ts file
+      const fs = require('fs');
+      const path = require('path');
+      
+      const configPaths = [
+        path.resolve(process.cwd(), 'restified.config.ts'),
+        path.resolve(process.cwd(), 'restified.config.js'),
+        path.resolve(process.cwd(), 'dist/restified.config.js'),
+        path.resolve(process.cwd(), 'src/restified.config.ts')
+      ];
+      
+      if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+        console.log('🔍 Trying to load config from paths:', configPaths);
+      }
+      
+      for (const configPath of configPaths) {
+        if (fs.existsSync(configPath)) {
+          if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+            console.log('✅ Found config file:', configPath);
+          }
+          
+          try {
+            // For TypeScript files, try to require the compiled version or use ts-node
+            let config;
+            if (configPath.endsWith('.ts')) {
+              // Try to find compiled JS version first
+              const jsPath = configPath.replace('.ts', '.js').replace('src/', 'dist/');
+              if (fs.existsSync(jsPath)) {
+                delete require.cache[require.resolve(jsPath)];
+                config = require(jsPath);
+                if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+                  console.log('📦 Loaded compiled config from:', jsPath);
+                }
+              } else {
+                // Try to require TypeScript file directly (if ts-node is available)
+                delete require.cache[require.resolve(configPath)];
+                config = require(configPath);
+                if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+                  console.log('📦 Loaded TS config directly from:', configPath);
+                }
+              }
+            } else {
+              delete require.cache[require.resolve(configPath)];
+              config = require(configPath);
+              if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+                console.log('📦 Loaded JS config from:', configPath);
+              }
+            }
+            
+            // Extract the actual config object
+            const actualConfig = config.default || config;
+            if (actualConfig && typeof actualConfig === 'object') {
+              if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+                console.log('🎯 Config loaded successfully. Main sections:', JSON.stringify(Object.keys(actualConfig)));
+                console.log('  - clients:', actualConfig.clients ? Object.keys(actualConfig.clients).length : 'none');
+                console.log('  - databases:', actualConfig.databases ? Object.keys(actualConfig.databases).length : 'none');
+                console.log('  - authentication:', actualConfig.authentication ? 'yes' : 'no');
+                console.log('  - reporting:', actualConfig.reporting ? 'yes' : 'no');
+                console.log('  - performance:', actualConfig.performance ? 'yes' : 'no');
+              }
+              return this.sanitizeConfigForDisplay(actualConfig);
+            }
+          } catch (err) {
+            if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+              console.warn(`❌ Could not load config from ${configPath}:`, err.message);
+            }
+            continue;
+          }
+        }
+      }
+      
+      if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+        console.log('❌ No config file found in any of the expected paths');
+      }
+      return {};
+    } catch (error) {
+      console.warn('Could not load Restified config file:', error.message);
+      return {};
+    }
+  }
+
+  private static sanitizeConfigForDisplay(config: any): any {
+    if (!config || typeof config !== 'object') {
+      return {};
+    }
+
+    const cleaned = JSON.parse(JSON.stringify(config));
+    
+    // Remove or mask sensitive information
+    const sensitiveKeys = ['password', 'secret', 'key', 'token', 'apiKey', 'private', 'credentials'];
+    
+    const sanitizeObject = (obj: any): void => {
+      if (!obj || typeof obj !== 'object') return;
+      
+      Object.keys(obj).forEach(key => {
+        const lowerKey = key.toLowerCase();
+        const isSensitive = sensitiveKeys.some(sensitiveKey => lowerKey.includes(sensitiveKey));
+        
+        if (isSensitive) {
+          if (typeof obj[key] === 'string' && obj[key].length > 0) {
+            obj[key] = '*'.repeat(Math.min(obj[key].length, 8));
+          } else {
+            obj[key] = '***MASKED***';
+          }
+        } else if (typeof obj[key] === 'object') {
+          sanitizeObject(obj[key]);
+        }
+      });
+    };
+    
+    sanitizeObject(cleaned);
+    return cleaned;
   }
 }
 

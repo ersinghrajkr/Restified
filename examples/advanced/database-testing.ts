@@ -62,7 +62,8 @@ describe('Database Integration Testing', function() {
       
       // Create snapshot before test
       await dbClient.createSnapshot('before-user-test', ['users']);
-      
+      restified.setGlobalVariable('GdbSnapshot', 'Gbefore-user-test');
+      restified.setLocalVariable('LdbSnapshot', 'Lbefore-user-test');
       // Create user via API
       const response = await restified
         .given()

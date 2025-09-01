@@ -144,6 +144,7 @@ raj-reports/
 test-results/
 examples/output/
 restified-reports/
+mochawesome-report/
 # IDE files
 .vscode/
 .idea/

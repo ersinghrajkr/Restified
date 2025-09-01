@@ -1435,6 +1435,362 @@ export class RestifiedTemplateEngine {
             text-underline-offset: 2px;
         }
         
+        /* Floating Action Buttons - Right Side */
+        .floating-buttons {
+            position: fixed;
+            right: 20px;
+            top: 120px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .floating-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: none;
+            background: linear-gradient(135deg, ${reportConfig.theme.primaryColor} 0%, ${reportConfig.theme.secondaryColor} 100%);
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .floating-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.6s ease;
+        }
+        
+        .floating-btn:hover::before {
+            left: 100%;
+        }
+        
+        .floating-btn:hover {
+            transform: translateY(-2px) scale(1.1);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+        }
+        
+        .floating-btn:active {
+            transform: translateY(0) scale(0.95);
+        }
+        
+        .floating-btn.config {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .floating-btn.variables {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        }
+        
+        .floating-btn.environment {
+            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+        }
+        
+        .floating-btn-tooltip {
+            position: absolute;
+            right: 60px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            pointer-events: none;
+            z-index: 1001;
+        }
+        
+        .floating-btn-tooltip::after {
+            content: '';
+            position: absolute;
+            left: 100%;
+            top: 50%;
+            transform: translateY(-50%);
+            border: 5px solid transparent;
+            border-left-color: rgba(0, 0, 0, 0.8);
+        }
+        
+        .floating-btn:hover .floating-btn-tooltip {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px);
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .modal-content {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            margin: auto;
+            padding: 0;
+            border: none;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideIn 0.3s ease;
+            position: relative;
+        }
+        
+        @keyframes slideIn {
+            from { 
+                opacity: 0;
+                transform: translateY(-50px) scale(0.9);
+            }
+            to { 
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        .modal-header {
+            background: linear-gradient(135deg, ${reportConfig.theme.primaryColor} 0%, ${reportConfig.theme.secondaryColor} 100%);
+            color: white;
+            padding: 20px 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .modal-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.08) 50%, transparent 70%);
+            pointer-events: none;
+        }
+        
+        .modal-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .modal-close {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .modal-close:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.4);
+            transform: scale(1.1);
+        }
+        
+        .modal-body {
+            padding: 25px;
+            max-height: calc(90vh - 140px);
+            overflow-y: auto;
+        }
+        
+        .modal-body::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .modal-body::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        
+        .modal-body::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+        
+        .modal-body::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+        
+        .json-display {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', monospace;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            overflow: auto;
+            border: 1px solid #404040;
+            white-space: pre;
+            word-wrap: break-word;
+            tab-size: 2;
+        }
+        
+        .data-section {
+            margin-bottom: 25px;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        }
+        
+        .data-section-header {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 15px 20px;
+            border-bottom: 1px solid #dee2e6;
+            font-weight: 600;
+            color: #495057;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .data-section-content {
+            padding: 20px;
+        }
+        
+        .empty-data {
+            text-align: center;
+            color: #6c757d;
+            font-style: italic;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        /* Loading States */
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            color: #666;
+            font-style: italic;
+        }
+        
+        .data-loading {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading-shimmer 1.5s infinite;
+            border-radius: 6px;
+            height: 20px;
+            margin: 10px 0;
+        }
+        
+        @keyframes loading-shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        
+        /* Mobile responsive adjustments */
+        @media (max-width: 768px) {
+            .floating-buttons {
+                right: 10px;
+                top: 80px;
+                gap: 8px;
+            }
+            
+            .floating-btn {
+                width: 40px;
+                height: 40px;
+                font-size: 16px;
+            }
+            
+            .floating-btn-tooltip {
+                right: 50px;
+                font-size: 11px;
+                padding: 6px 8px;
+            }
+            
+            .modal-content {
+                width: 95%;
+                margin: 10px;
+                max-height: 95vh;
+            }
+            
+            .modal-header {
+                padding: 15px 20px;
+            }
+            
+            .modal-title {
+                font-size: 1.2rem;
+            }
+            
+            .modal-body {
+                padding: 20px;
+                max-height: calc(95vh - 120px);
+            }
+        }
+        
         .version-inline {
             background: linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(16, 185, 129, 0.15) 100%);
             color: #86efac;
@@ -1623,6 +1979,90 @@ export class RestifiedTemplateEngine {
             </div>
         </div>
         
+        <!-- Floating Action Buttons -->
+        <div class="floating-buttons">
+            <button class="floating-btn config" onclick="openModal('configModal')" title="View Configuration">
+                <span class="floating-btn-tooltip">Restified Config</span>
+                ⚙️
+            </button>
+            <button class="floating-btn variables" onclick="openModal('variablesModal')" title="View Runtime Variables">
+                <span class="floating-btn-tooltip">Runtime Variables</span>
+                🔧
+            </button>
+            <button class="floating-btn environment" onclick="openModal('environmentModal')" title="View Environment Variables">
+                <span class="floating-btn-tooltip">Environment Variables</span>
+                🌍
+            </button>
+        </div>
+
+        <!-- Configuration Modal -->
+        <div id="configModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title">⚙️ Restified Configuration</h2>
+                    <button class="modal-close" onclick="closeModal('configModal')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div id="config-content">
+                        <div class="json-display" id="config-json">Loading configuration...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Runtime Variables Modal -->
+        <div id="variablesModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title">🔧 Runtime Variables</h2>
+                    <button class="modal-close" onclick="closeModal('variablesModal')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div id="variables-content">
+                        <div class="data-section">
+                            <div class="data-section-header">
+                                🌍 Global Variables
+                            </div>
+                            <div class="data-section-content">
+                                <div class="json-display" id="global-variables">Loading global variables...</div>
+                            </div>
+                        </div>
+                        <div class="data-section">
+                            <div class="data-section-header">
+                                📍 Local Variables
+                            </div>
+                            <div class="data-section-content">
+                                <div class="json-display" id="local-variables">Loading local variables...</div>
+                            </div>
+                        </div>
+                        <div class="data-section">
+                            <div class="data-section-header">
+                                📤 Extracted Variables
+                            </div>
+                            <div class="data-section-content">
+                                <div class="json-display" id="extracted-variables">Loading extracted variables...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Environment Variables Modal -->
+        <div id="environmentModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title">🌍 Environment Variables</h2>
+                    <button class="modal-close" onclick="closeModal('environmentModal')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div id="environment-content">
+                        <div class="json-display" id="environment-json">Loading environment variables...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div id="suites-container">
             <!-- Suites will be added here -->
         </div>
@@ -1661,6 +2101,20 @@ export class RestifiedTemplateEngine {
 
     <script>
         const REPORT_DATA = ${this.stringifyWithEmojis({ stats, suites })};
+        
+        // Pre-process and cache data for fast loading
+        const CONFIG_DATA = ${this.stringifyWithEmojis(config || {})};
+        const CONFIG_JSON_PREPARED = ${JSON.stringify(JSON.stringify(reportData.restifiedConfig || {}, null, 2))};
+        
+        const RUNTIME_VARIABLES = ${this.stringifyWithEmojis(reportData.runtimeVariables || { global: {}, local: {}, extracted: {} })};
+        const RUNTIME_JSON_PREPARED = {
+            global: ${JSON.stringify(JSON.stringify((reportData.runtimeVariables || {}).global || {}, null, 2))},
+            local: ${JSON.stringify(JSON.stringify((reportData.runtimeVariables || {}).local || {}, null, 2))},
+            extracted: ${JSON.stringify(JSON.stringify((reportData.runtimeVariables || {}).extracted || {}, null, 2))}
+        };
+        
+        const ENVIRONMENT_VARIABLES = ${this.stringifyWithEmojis(reportData.environmentVariables || {})};
+        const ENV_JSON_PREPARED = ${JSON.stringify(JSON.stringify(reportData.environmentVariables || {}, null, 2))};
 
         function initializeReport() {
             const container = document.getElementById('suites-container');
@@ -2184,6 +2638,152 @@ export class RestifiedTemplateEngine {
             // Initialize filters after creating all elements
             initializeFilters();
         }
+
+        // Modal Management Functions
+        function openModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.classList.add('show');
+                document.body.style.overflow = 'hidden';
+                
+                // Show loading state immediately
+                showLoadingState(modalId);
+                
+                // Load data asynchronously for better performance
+                setTimeout(() => {
+                    switch (modalId) {
+                        case 'configModal':
+                            loadConfigDataFast();
+                            break;
+                        case 'variablesModal':
+                            loadVariablesDataFast();
+                            break;
+                        case 'environmentModal':
+                            loadEnvironmentDataFast();
+                            break;
+                    }
+                }, 50); // Small delay to show loading state
+            }
+        }
+        
+        function showLoadingState(modalId) {
+            const loadingHTML = '<div class="loading-content"><div class="loading-spinner"></div>Loading data...</div>';
+            
+            switch (modalId) {
+                case 'configModal':
+                    document.getElementById('config-json').innerHTML = loadingHTML;
+                    break;
+                case 'variablesModal':
+                    document.getElementById('global-variables').innerHTML = loadingHTML;
+                    document.getElementById('local-variables').innerHTML = loadingHTML;
+                    document.getElementById('extracted-variables').innerHTML = loadingHTML;
+                    break;
+                case 'environmentModal':
+                    document.getElementById('environment-json').innerHTML = loadingHTML;
+                    break;
+            }
+        }
+        
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.classList.remove('show');
+                document.body.style.overflow = 'auto';
+            }
+        }
+        
+        // Fast loading functions using prepared JSON data
+        function loadConfigDataFast() {
+            const configElement = document.getElementById('config-json');
+            if (configElement) {
+                try {
+                    if (CONFIG_JSON_PREPARED && CONFIG_JSON_PREPARED.length > 20) {
+                        configElement.innerHTML = syntaxHighlightJson(CONFIG_JSON_PREPARED);
+                    } else {
+                        configElement.innerHTML = '<div class="empty-data">No configuration data available</div>';
+                    }
+                } catch (error) {
+                    configElement.innerHTML = '<div class="empty-data">Error loading configuration</div>';
+                }
+            }
+        }
+        
+        function loadVariablesDataFast() {
+            const globalElement = document.getElementById('global-variables');
+            const localElement = document.getElementById('local-variables');
+            const extractedElement = document.getElementById('extracted-variables');
+            
+            if (globalElement && RUNTIME_JSON_PREPARED) {
+                try {
+                    // Use prepared JSON for instant loading with syntax highlighting
+                    globalElement.innerHTML = RUNTIME_JSON_PREPARED.global && RUNTIME_JSON_PREPARED.global.length > 20
+                        ? syntaxHighlightJson(RUNTIME_JSON_PREPARED.global)
+                        : '<div class="empty-data">No global variables set</div>';
+                        
+                    localElement.innerHTML = RUNTIME_JSON_PREPARED.local && RUNTIME_JSON_PREPARED.local.length > 20
+                        ? syntaxHighlightJson(RUNTIME_JSON_PREPARED.local)
+                        : '<div class="empty-data">No local variables set</div>';
+                        
+                    extractedElement.innerHTML = RUNTIME_JSON_PREPARED.extracted && RUNTIME_JSON_PREPARED.extracted.length > 20
+                        ? syntaxHighlightJson(RUNTIME_JSON_PREPARED.extracted)
+                        : '<div class="empty-data">No extracted variables available</div>';
+                } catch (error) {
+                    globalElement.innerHTML = '<div class="empty-data">Error loading runtime variables</div>';
+                    localElement.innerHTML = '<div class="empty-data">Error loading local variables</div>';
+                    extractedElement.innerHTML = '<div class="empty-data">Error loading extracted variables</div>';
+                }
+            }
+        }
+        
+        function loadEnvironmentDataFast() {
+            const envElement = document.getElementById('environment-json');
+            if (envElement) {
+                try {
+                    if (ENV_JSON_PREPARED && ENV_JSON_PREPARED.length > 20) {
+                        // Apply syntax highlighting and use chunking for large environment data
+                        const highlightedEnv = syntaxHighlightJson(ENV_JSON_PREPARED);
+                        loadLargeDataChunked(envElement, highlightedEnv, 'environment variables');
+                    } else {
+                        envElement.innerHTML = '<div class="empty-data">No environment variables captured</div>';
+                    }
+                } catch (error) {
+                    envElement.innerHTML = '<div class="empty-data">Error loading environment variables</div>';
+                }
+            }
+        }
+        
+        function loadLargeDataChunked(element, processedHtml, dataType) {
+            // For large data sets, show immediately and then enhance
+            element.innerHTML = processedHtml;
+            
+            // Add a performance indicator for large datasets
+            const dataSize = processedHtml.length;
+            if (dataSize > 50000) { // If larger than 50KB
+                const sizeInfo = document.createElement('div');
+                sizeInfo.className = 'data-size-info';
+                sizeInfo.style.cssText = 'position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.7); color: white; padding: 5px 10px; border-radius: 4px; font-size: 12px; z-index: 1;';
+                sizeInfo.textContent = '📊 ' + Math.round(dataSize/1024) + 'KB of ' + dataType;
+                element.parentNode.style.position = 'relative';
+                element.parentNode.appendChild(sizeInfo);
+            }
+        }
+        
+        // Close modal when clicking outside
+        window.addEventListener('click', function(event) {
+            if (event.target.classList.contains('modal')) {
+                closeModal(event.target.id);
+            }
+        });
+        
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                const openModals = document.querySelectorAll('.modal.show');
+                openModals.forEach(modal => {
+                    closeModal(modal.id);
+                });
+            }
+        });
 
         document.addEventListener('DOMContentLoaded', initializeReport);
     </script>

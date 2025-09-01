@@ -121,6 +121,14 @@ export class VariableStore {
     console.log('Extracted Variables:', this.extractedVariables);
     console.log('Environment Variables:', Object.keys(this.environmentVariables).length, 'variables');
     console.log('===========================');
+
+    // 🎯 CRITICAL: Save snapshot for reporter to access later
+    (global as any).__RESTIFIED_VARIABLE_SNAPSHOT__ = {
+      global: { ...this.globalVariables },
+      local: { ...this.localVariables },
+      extracted: { ...this.extractedVariables },
+      capturedAt: new Date().toISOString()
+    };
   }
 
   exportVariables(): VariableContext {
