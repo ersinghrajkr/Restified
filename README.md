@@ -2513,6 +2513,55 @@ authentication: {
 
 ---
 
+## Assertion Usage:
+
+The Direct Assertion Integration system is now fully working! Here's the final summary:
+
+Both passing and failing assertions captured with error handling
+
+  📊 How to use Assertions
+
+1. Direct Chai Integration:
+   response.startCapturing();
+   const expect = response.expect;
+   expect(responseData.id).to.equal(1);           // ✅ Captured
+   expect(responseData.name).to.be.a('string');   // ✅ Captured
+   expect(responseData.email).to.contain('@');    // ✅ Captured
+   expect(responseData.website).to.match(/\w+\.\w+/); // ✅ Captured
+   const captured = await response.finishCapturing();
+2. Playwright Integration (with Chai fallback):
+   response.startCapturing();
+   const expect = response.playwright; // Falls back to Chai
+   expect(responseData.id).toBe(1);               // ✅ Captured as Chai
+   expect(responseData.title).toBeTruthy();       // ✅ Captured as Chai
+   expect(responseData.userId).toBeGreaterThan(0); // ✅ Captured as Chai
+   const captured = await response.finishCapturing();
+3. Node.js Assert Integration:
+   response.startCapturing();
+   const assert = response.assert;
+   assert.equal(responseData.id, 2);          // ✅ Captured
+   assert.strictEqual(responseData.username, 'Antonette'); // ✅ Captured
+   assert.ok(responseData.email);             // ✅ Captured
+   const captured = await response.finishCapturing();
+4. Clean Callback Approach:
+   const captured = await response.withAssertions((expect, playwright, assert) => {
+   expect(responseData.id).to.equal(1);     // ✅ Captured
+   expect(responseData.title).to.be.a('string'); // ✅ Captured
+   assert.ok(responseData.id);              // ✅ Captured
+   assert.equal(responseData.userId, 1);    // ✅ Captured
+   });
+
+  🔧 Key Technical Solutions Implemented
+
+1. Deep Proxy Chaining: Fixed Chai's complex chained syntax (.to.be.a(), .to.be.greaterThan())
+2. Chain Terminators: Properly identify actual assertion methods vs. intermediate chain methods
+3. Error Handling: Capture assertions even when tests fail, while properly re-throwing errors
+4. Assertion Categorization: All assertions tagged with [chai], [playwright], [assert] in reports
+5. Report Integration: All captured assertions appear in RestifiedTS HTML reports
+
+  The implementation now provides direct, clean support for external assertion libraries exactly as requested, with all assertions properly    captured in RestifiedTS HTML reports! 🚀
+
+
 ## 📊 **Enterprise Benefits**
 
 ### **✅ For Development Teams**
