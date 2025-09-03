@@ -2,6 +2,8 @@ const jp = require('jsonpath');
 import Ajv, { JSONSchemaType } from 'ajv';
 import addFormats from 'ajv-formats';
 import { HttpResponse, AssertionResult } from '../../RestifiedTypes';
+import { externalAssertionCapture } from '../assertion/ExternalAssertionCapture';
+import { directAssertionInterceptor, expectWithCapture, playwrightExpectWithCapture, shouldWithCapture, assertWithCapture, CapturedAssertion } from '../assertion/DirectAssertionInterceptor';
 
 // Import mochawesome addContext utility for proper context capture
 let addContext: any = null;
@@ -666,5 +668,227 @@ export class ThenStep {
 
   getAssertions(): AssertionResult[] {
     return this.assertions;
+  }
+
+  /**
+   * Start capturing external assertions using direct interceptors
+   * @returns {this} ThenStep instance for method chaining
+   * @example
+   * ```typescript
+   * const response = await restified.given()
+   *   .when().get('/api/users').execute();
+   * 
+   * // Start capturing
+   * response.startCapturing();
+   * 
+   * // Use direct assertion helpers
+   * const expect = response.expect; // Chai expect with capture
+   * const pwExpect = response.playwright; // Playwright expect with capture
+   * const assert = response.assert; // Node assert with capture
+   * 
+   * expect(response.data.id).to.equal(1);
+   * pwExpect(response.data.name).toBeTruthy();
+   * assert.ok(response.data.email);
+   * 
+   * await response.finishCapturing(); // Include in report
+   * ```
+   */
+  startCapturing(): this {
+    directAssertionInterceptor.startCapturing();
+    return this;
+  }
+
+  /**
+   * Chai expect with assertion capture
+   * @example
+   * ```typescript
+   * response.startCapturing();
+   * const expect = response.expect;
+   * expect(response.data.id).to.equal(1);
+   * expect(response.data.name).to.be.a('string');
+   * await response.finishCapturing();
+   * ```
+   */
+  get expect() {
+    return expectWithCapture;
+  }
+
+  /**
+   * Playwright expect with assertion capture
+   * @example
+   * ```typescript
+   * response.startCapturing();
+   * const expect = response.playwright;
+   * expect(response.data.id).toBe(1);
+   * expect(response.data.name).toBeTruthy();
+   * await response.finishCapturing();
+   * ```
+   */
+  get playwright() {
+    return playwrightExpectWithCapture;
+  }
+
+  /**
+   * Should syntax with assertion capture
+   * @example
+   * ```typescript
+   * response.startCapturing();
+   * response.data.id.should.equal(1);
+   * response.data.name.should.be.a('string');
+   * await response.finishCapturing();
+   * ```
+   */
+  get should() {
+    return shouldWithCapture;
+  }
+
+  /**
+   * Node.js assert with assertion capture
+   * @example
+   * ```typescript
+   * response.startCapturing();
+   * const assert = response.assert;
+   * assert.equal(response.data.id, 1);
+   * assert.ok(response.data.name);
+   * await response.finishCapturing();
+   * ```
+   */
+  get assert() {
+    return assertWithCapture;
+  }
+
+  /**
+   * Stop capturing assertions and include them in the report
+   * @returns {Promise<CapturedAssertion[]>} Promise resolving to captured assertions
+   * @example
+   * ```typescript
+   * const response = await restified.given()
+   *   .when().get('/api/users').execute();
+   * 
+   * response.startCapturing();
+   * const expect = response.expect;
+   * expect(response.data.id).to.equal(1);
+   * expect(response.data.name).to.be.a('string');
+   * 
+   * const captured = await response.finishCapturing();
+   * ```
+   */
+  async finishCapturing(): Promise<CapturedAssertion[]> {
+    const capturedAssertions = directAssertionInterceptor.stopCapturing();
+    
+    // Convert captured assertions to RestifiedTS format
+    const restifiedAssertions: AssertionResult[] = capturedAssertions.map(assertion => ({
+      passed: assertion.passed,
+      message: `[${assertion.type}] ${assertion.message}`,
+      expected: assertion.expected,
+      actual: assertion.actual,
+      errorDetails: assertion.stack ? {
+        name: assertion.type,
+        message: assertion.message,
+        stack: assertion.stack
+      } : undefined
+    }));
+    
+    // Add external assertions to our internal assertions
+    this.assertions.push(...restifiedAssertions);
+    
+    // Update the context with new assertions
+    this.context.setAssertions(this.assertions);
+    
+    if (process.env.DEBUG_RESTIFIED_ASSERTIONS === 'true') {
+      console.log(`✅ Captured ${capturedAssertions.length} assertions and added to report`);
+      capturedAssertions.forEach(assertion => {
+        console.log(`   - [${assertion.type}] ${assertion.passed ? '✅' : '❌'} ${assertion.message}`);
+      });
+    }
+    
+    // Re-run report context updates with external assertions
+    await this.addToRestifiedReporterContext();
+    await this.addToMochawesomeContext();
+    await this.addToCustomReporterContext();
+    
+    return capturedAssertions;
+  }
+
+  /**
+   * Capture assertions automatically during a callback function with direct access to assertion libraries
+   * @param {Function} callback - Function containing assertions to capture
+   * @returns {Promise<CapturedAssertion[]>} Promise resolving to captured assertions
+   * @example
+   * ```typescript
+   * const response = await restified.given()
+   *   .when().get('/api/users').execute();
+   * 
+   * const capturedAssertions = await response
+   *   .statusCode(200)
+   *   .withAssertions((expect, playwright, assert) => {
+   *     // Direct access to assertion libraries
+   *     expect(response.data.id).to.equal(1);
+   *     playwright(response.data.name).toBeTruthy();
+   *     assert.ok(response.data.email);
+   *   });
+   * ```
+   */
+  async withAssertions(callback: (expect: typeof expectWithCapture, playwright: typeof playwrightExpectWithCapture, assert: typeof assertWithCapture) => Promise<void> | void): Promise<CapturedAssertion[]> {
+    this.startCapturing();
+    
+    try {
+      await callback(this.expect, this.playwright, this.assert);
+      return await this.finishCapturing();
+    } catch (error) {
+      // Capture assertions even when error occurs
+      await this.finishCapturing();
+      throw error; // Re-throw the error
+    }
+  }
+
+  /**
+   * Add a manual external assertion (for custom frameworks)
+   * @param {object} assertion - Assertion details
+   * @returns {this} ThenStep instance for method chaining
+   * @example
+   * ```typescript
+   * await response
+   *   .statusCode(200)
+   *   .addExternalAssertion({
+   *     passed: response.data.length > 0,
+   *     message: 'Response should have data',
+   *     expected: 'length > 0',
+   *     actual: response.data.length,
+   *     framework: 'custom'
+   *   })
+   *   .execute();
+   * ```
+   */
+  addExternalAssertion(assertion: {
+    passed: boolean;
+    message: string;
+    expected?: any;
+    actual?: any;
+    framework?: string;
+  }): this {
+    // Add directly to our interceptor
+    directAssertionInterceptor.addAssertion({
+      type: 'custom',
+      passed: assertion.passed,
+      message: assertion.message,
+      expected: assertion.expected,
+      actual: assertion.actual
+    });
+    
+    return this;
+  }
+
+  private generateTestId(): string {
+    try {
+      const currentTest = this.getCurrentMochaTest();
+      if (currentTest && currentTest.fullTitle) {
+        return `${currentTest.fullTitle()}-${Date.now()}`;
+      }
+    } catch (error) {
+      // Ignore
+    }
+    
+    return `restified-test-${Date.now()}`;
   }
 }

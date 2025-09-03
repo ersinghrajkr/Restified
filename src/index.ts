@@ -50,6 +50,14 @@ export { CryptographicUtilities, SecurityUtilities } from './core/utils/Security
 export { FileUtilities, EncodingUtilities, NetworkUtilities } from './core/utils/FileUtilities';
 export { UtilityUsageExamples, ExampleCustomPlugin, quickStartExample } from './core/utils/UtilityExamples';
 
+// External assertion capture (original complex system)
+export { ExternalAssertionCapture, externalAssertionCapture } from './core/assertion/ExternalAssertionCapture';
+export type { ExternalAssertionResult } from './core/assertion/ExternalAssertionCapture';
+
+// Direct assertion integration (simple, clean approach)
+export { DirectAssertionInterceptor, directAssertionInterceptor, expectWithCapture, playwrightExpectWithCapture, shouldWithCapture, assertWithCapture } from './core/assertion/DirectAssertionInterceptor';
+export type { CapturedAssertion } from './core/assertion/DirectAssertionInterceptor';
+
 // Reporting
 export import RestifiedHtmlReporter = require('./reporting/restified-html-reporter');
 

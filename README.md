@@ -139,23 +139,38 @@ npm run examples
 ### Simple Test Example
 
 ```typescript
-import { restified } from 'restifiedts';
+import { restified } from "restifiedts";
 
-describe('API Tests', function() {
-  it('should get user data', async function() {
+describe("API Tests", function () {
+  it("should get user data", async function () {
     const response = await restified
       .given()
-        .useClient('api')  // Pre-configured with auth & headers
+      .useClient("api") // Pre-configured with auth & headers
       .when()
-        .get('/users/1')
-        .execute();
+      .get("/users/1")
+      .execute();
 
     await response
       .statusCode(200)
-      .jsonPath('$.name', 'Leanne Graham')
+      .jsonPath("$.name", "Leanne Graham")
       .execute();
+    // Step 1: Start capturing external assertions
+    response.startCapturing();
+
+    // Step 2: Get the wrapped expect function from response
+    const expect = response.expect; // This provides Chai expect with capture
+
+    // Step 3: Use normal Chai syntax - assertions will be automatically captured
+    expect(responseData.id).to.equal(1);
+    expect(responseData.name).to.be.a("string");
+    expect(responseData.email).to.contain("@");
+    expect(responseData.website).to.match(/\w+\.\w+/);
+
+    // Step 4: Finish capturing and include in RestifiedTS HTML report
+    const captured = await response.finishCapturing();
   });
 });
+
 ```
 
 ---
@@ -897,7 +912,7 @@ describe('API Reliability Testing', () => {
         .execute()
       .then(response => response.statusCode(200))
       .catch(error => console.log(`Request ${i} failed: ${error.message}`));
-    
+  
       requests.push(request);
     }
   
@@ -1118,7 +1133,7 @@ await restified.given()
     onCircuitOpen: async (circuitId, stats) => {
       console.error(`🚨 CIRCUIT OPENED: ${circuitId}`);
       console.error(`Failure count: ${stats.failureCount}/${stats.totalRequests}`);
-    
+  
       // Send alert to monitoring system
       await sendAlert('circuit-breaker', {
         event: 'OPEN',
@@ -1130,7 +1145,7 @@ await restified.given()
   
     onCircuitClose: async (circuitId, stats) => {
       console.log(`✅ CIRCUIT CLOSED: ${circuitId} - Service recovered`);
-    
+  
       // Send recovery notification
       await sendAlert('circuit-breaker', {
         event: 'CLOSED',
@@ -1224,7 +1239,7 @@ describe('Circuit Breaker Monitoring', () => {
         }
         return null;
       });
-    
+  
       requests.push(request);
     }
   
@@ -1238,13 +1253,13 @@ describe('Circuit Breaker Monitoring', () => {
       const state = restified.getCircuitState(circuitId);
       const stats = restified.getCircuitBreakerStats(circuitId);
       const metrics = restified.getCircuitBreakerMetrics(circuitId);
-    
+  
       console.log(`\n🔌 Circuit: ${circuitId}`);
       console.log(`   State: ${state}`);
       console.log(`   Requests: ${stats.totalRequests}`);
       console.log(`   Failures: ${stats.failureCount}`);
       console.log(`   Success Rate: ${((stats.successCount / stats.totalRequests) * 100).toFixed(2)}%`);
-    
+  
       if (metrics) {
         console.log(`   Availability: ${metrics.availabilityPercentage.toFixed(2)}%`);
         console.log(`   P95 Response Time: ${metrics.responseTimeP95}ms`);
@@ -1267,7 +1282,7 @@ describe('Circuit Breaker Monitoring', () => {
       .when()
         .get('/test')
         .execute();
-    
+  
       // Should not reach here
       throw new Error('Expected circuit breaker to prevent request');
     } catch (error) {
@@ -1640,7 +1655,7 @@ describe('Custom Timeout Patterns', () => {
     .when()
       .post('/ml/predict', { data: 'model input' }) // Gets 45s * 3.0 = 135s timeout
       .execute();
-    
+  
     const videoResponse = await restified.given()
       .timeoutIntelligence({ enabled: true })
       .baseURL('https://media-api.company.com')

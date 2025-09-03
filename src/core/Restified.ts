@@ -21,6 +21,7 @@ import { ErrorRecoveryManager } from './network/ErrorRecoveryManager';
 import { AdvancedPerformanceManager, PerformanceMetrics } from './performance/AdvancedPerformanceManager';
 import RestifiedHtmlReporter = require('../reporting/restified-html-reporter');
 import { RestifiedConfig, RequestConfig, HttpResponse, AssertionResult, AuthConfig } from '../RestifiedTypes';
+import { externalAssertionCapture, ExternalAssertionResult } from './assertion/ExternalAssertionCapture';
 
 export class Restified {
   private variableStore: VariableStore;
@@ -1156,6 +1157,130 @@ export class Restified {
    */
   addTimeoutPattern(pattern: import('../RestifiedTypes').EndpointPattern): void {
     globalTimeoutManager.addEndpointPattern(pattern);
+  }
+
+  // ================================
+  // External Assertion Capture 
+  // ================================
+
+  /**
+   * Start capturing external expect() assertions from test frameworks like Playwright, Cypress, Jest
+   * @param {string} [testId] - Optional test identifier
+   * @example
+   * ```typescript
+   * restified.startExternalAssertionCapture('my-test-1');
+   * 
+   * // These assertions will be captured in RestifiedTS reports
+   * expect(response.data.length).toBeGreaterThan(0);
+   * expect(response.data[0]).toHaveProperty('name');
+   * 
+   * const captured = restified.stopExternalAssertionCapture();
+   * ```
+   */
+  startExternalAssertionCapture(testId?: string): void {
+    externalAssertionCapture.startCapturing(testId);
+  }
+
+  /**
+   * Stop capturing external assertions and return captured results
+   * @returns {ExternalAssertionResult[]} Array of captured assertions
+   * @example
+   * ```typescript
+   * restified.startExternalAssertionCapture();
+   * 
+   * expect(response.status).toBe(200);
+   * expect(response.data).toBeDefined();
+   * 
+   * const captured = restified.stopExternalAssertionCapture();
+   * console.log(`Captured ${captured.length} external assertions`);
+   * ```
+   */
+  stopExternalAssertionCapture(): ExternalAssertionResult[] {
+    return externalAssertionCapture.stopCapturing();
+  }
+
+  /**
+   * Add a manual external assertion for custom frameworks
+   * @param {Partial<ExternalAssertionResult>} assertion - Assertion details
+   * @example
+   * ```typescript
+   * restified.addExternalAssertion({
+   *   type: 'custom',
+   *   framework: 'custom',
+   *   passed: response.data.length > 0,
+   *   message: 'Response should have data items',
+   *   expected: '> 0 items',
+   *   actual: response.data.length
+   * });
+   * ```
+   */
+  addExternalAssertion(assertion: Partial<ExternalAssertionResult>): void {
+    externalAssertionCapture.addAssertion(assertion);
+  }
+
+  /**
+   * Get all currently captured external assertions
+   * @returns {ExternalAssertionResult[]} Array of captured external assertions
+   */
+  getCapturedExternalAssertions(): ExternalAssertionResult[] {
+    return externalAssertionCapture.getCapturedAssertions();
+  }
+
+  /**
+   * Get statistics about captured external assertions
+   * @returns {object} Statistics including total, passed, failed, and breakdown by framework
+   * @example
+   * ```typescript
+   * const stats = restified.getExternalAssertionStats();
+   * console.log(`Total: ${stats.total}, Passed: ${stats.passed}, Failed: ${stats.failed}`);
+   * console.log('By framework:', stats.byFramework);
+   * ```
+   */
+  getExternalAssertionStats(): {
+    total: number;
+    passed: number;
+    failed: number;
+    byFramework: Record<string, number>;
+    byType: Record<string, number>;
+  } {
+    return externalAssertionCapture.getStats();
+  }
+
+  /**
+   * Clear all captured external assertions
+   */
+  clearExternalAssertions(): void {
+    externalAssertionCapture.clear();
+  }
+
+  /**
+   * Execute a callback function while capturing external assertions
+   * @param {Function} callback - Function containing external assertions to capture
+   * @param {string} [testId] - Optional test identifier  
+   * @returns {Promise<ExternalAssertionResult[]>} Promise resolving to captured assertions
+   * @example
+   * ```typescript
+   * const response = await restified.given().when().get('/api/users').execute();
+   * 
+   * const captured = await restified.withExternalAssertions(async () => {
+   *   expect(response.data.length).toBeGreaterThan(0);
+   *   expect(response.data[0]).toHaveProperty('name');
+   *   expect(response.data[0].name).toBeTruthy();
+   * }, 'user-validation-test');
+   * 
+   * console.log(`Captured ${captured.length} assertions`);
+   * ```
+   */
+  async withExternalAssertions(
+    callback: () => Promise<void> | void, 
+    testId?: string
+  ): Promise<ExternalAssertionResult[]> {
+    this.startExternalAssertionCapture(testId);
+    try {
+      await callback();
+    } finally {
+      return this.stopExternalAssertionCapture();
+    }
   }
 
   // Enhanced cleanup method

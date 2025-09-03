@@ -22,3 +22,8 @@
 2. Metrics Collection - Performance tracking
 3. Request/Response Validation Pipeline - Pre-flight checks
 4. Memory Management - Efficient object pooling
+
+Consider yourself a senior software engineer with Typescript, Mocha and Nodejs. Please go through deep source code and implement a feature to have a two
+  buttons in restified html report, one in left and other in right side to view restified config once user click left button open a popup screen to show,
+  and once user click right button open a popup screen in which you have to show runtime variable( restified global, local, extracted) and make sure you
+  don't break any existing feature or change the format or structure
