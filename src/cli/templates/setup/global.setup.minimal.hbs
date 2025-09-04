@@ -1,0 +1,21 @@
+/**
+ * Minimal Global Test Setup
+ */
+
+import { restified } from 'restifiedts';
+
+before(async function() {
+  this.timeout(30000);
+  
+  try {
+    await restified.loadConfig();
+    console.log('✅ {{projectName}} test environment ready');
+  } catch (error) {
+    console.error('❌ Setup failed:', error);
+    throw error;
+  }
+});
+
+after(async function() {
+  await restified.cleanup();
+});

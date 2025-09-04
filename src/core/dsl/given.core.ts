@@ -1,16 +1,74 @@
-import { AuthConfig, RequestConfig } from '../../RestifiedTypes';
+import { AuthConfig, RequestConfig, ConnectionPoolConfig, RetryConfig, CircuitBreakerConfig, TimeoutConfig, ErrorRecoveryConfig, AdvancedPerformanceConfig } from '../../RestifiedTypes';
 
 export class GivenStep {
   private config: RequestConfig = {};
   private localVars: Record<string, any> = {};
 
-  constructor(private context: any) {}
+  constructor(private context: any) {
+    // Apply global configurations from the main config
+    const globalConfig = this.context.getConfig();
+    
+    // Apply global retry configuration if set
+    if (globalConfig.retry) {
+      this.config.retry = { ...globalConfig.retry };
+    }
+    
+    // Apply global connection pool configuration if set
+    if (globalConfig.connectionPool) {
+      this.config.connectionPool = { ...globalConfig.connectionPool };
+    }
+    
+    // Apply global circuit breaker configuration if set
+    if (globalConfig.circuitBreaker) {
+      this.config.circuitBreaker = { ...globalConfig.circuitBreaker };
+    }
+    
+    // Apply global timeout intelligence configuration if set
+    if (globalConfig.timeoutIntelligence) {
+      this.config.timeoutIntelligence = { ...globalConfig.timeoutIntelligence };
+    }
+    
+    // Apply global error recovery configuration if set
+    if (globalConfig.errorRecovery) {
+      this.config.errorRecovery = { ...globalConfig.errorRecovery };
+    }
+    
+    // Apply global advanced performance configuration if set
+    if (globalConfig.advancedPerformance) {
+      this.config.advancedPerformance = { ...globalConfig.advancedPerformance };
+    }
+  }
 
+  /**
+   * Sets the base URL for the HTTP request
+   * @param {string} url - Base URL (supports variable resolution like {{baseUrl}})
+   * @returns {this} GivenStep instance for method chaining
+   * @example
+   * ```typescript
+   * restified.given()
+   *   .baseURL('https://api.example.com')
+   *   .baseURL('{{environment.apiUrl}}') // Using variables
+   * ```
+   */
   baseURL(url: string): this {
     this.config.baseURL = url;
     return this;
   }
 
+  /**
+   * Sets a single HTTP header for the request
+   * @param {string} name - Header name (e.g., 'Content-Type', 'Authorization')
+   * @param {string} value - Header value (supports variable resolution and utilities)
+   * @returns {this} GivenStep instance for method chaining
+   * @example
+   * ```typescript
+   * restified.given()
+   *   .header('Content-Type', 'application/json')
+   *   .header('Authorization', 'Bearer {{authToken}}')
+   *   .header('X-Request-ID', '{{$util.random.uuid()}}')
+   *   .header('X-Timestamp', '{{$util.date.now("ISO")}}')
+   * ```
+   */
   header(name: string, value: string): this {
     if (!this.config.headers) {
       this.config.headers = {};
@@ -19,15 +77,57 @@ export class GivenStep {
     return this;
   }
 
+  /**
+   * Sets multiple HTTP headers at once
+   * @param {Record<string, string>} headers - Object containing header name-value pairs
+   * @returns {this} GivenStep instance for method chaining
+   * @example
+   * ```typescript
+   * restified.given()
+   *   .headers({
+   *     'Content-Type': 'application/json',
+   *     'Accept': 'application/json',
+   *     'User-Agent': 'RestifiedTS/2.0.6',
+   *     'X-API-Version': 'v2'
+   *   })
+   *   .headers({ 'Authorization': '{{bearerToken}}' }) // Can be chained
+   * ```
+   */
   headers(headers: Record<string, string>): this {
     this.config.headers = { ...this.config.headers, ...headers };
     return this;
   }
 
+  /**
+   * Sets the Content-Type header for the request (shorthand for .header('Content-Type', type))
+   * @param {string} type - MIME type (e.g., 'application/json', 'application/xml', 'multipart/form-data')
+   * @returns {this} GivenStep instance for method chaining
+   * @example
+   * ```typescript
+   * restified.given()
+   *   .contentType('application/json')        // JSON requests
+   *   .contentType('application/xml')         // XML requests
+   *   .contentType('multipart/form-data')     // File uploads
+   *   .contentType('application/x-www-form-urlencoded') // Form data
+   * ```
+   */
   contentType(type: string): this {
     return this.header('Content-Type', type);
   }
 
+  /**
+   * Sets the Accept header for the request (shorthand for .header('Accept', type))
+   * @param {string} type - MIME type to accept in response (e.g., 'application/json', 'text/html')
+   * @returns {this} GivenStep instance for method chaining
+   * @example
+   * ```typescript
+   * restified.given()
+   *   .accept('application/json')  // Expect JSON response
+   *   .accept('text/html')         // Expect HTML response
+   *   .accept('application/xml')   // Expect XML response
+   *   .accept('* /*')               // Accept any response type
+   * ```
+   */
   accept(type: string): this {
     return this.header('Accept', type);
   }
@@ -37,6 +137,18 @@ export class GivenStep {
     return this;
   }
 
+  /**
+   * Sets Bearer token authentication (adds Authorization: Bearer <token> header)
+   * @param {string} token - JWT token or API token (without 'Bearer ' prefix)
+   * @returns {this} GivenStep instance for method chaining
+   * @example
+   * ```typescript
+   * restified.given()
+   *   .bearerToken('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...')
+   *   .bearerToken('{{authToken}}')           // Using variable
+   *   .bearerToken('{{$util.env.API_TOKEN}}') // From environment
+   * ```
+   */
   bearerToken(token: string): this {
     return this.auth({
       type: 'bearer',
@@ -93,8 +205,151 @@ export class GivenStep {
     return this;
   }
 
-  when(): import('@core/dsl/when.core').WhenStep {
-    const { WhenStep } = require('@core/dsl/when.core');
+  /**
+   * Configure HTTP connection pooling for performance optimization
+   * @param {ConnectionPoolConfig} config - Connection pool configuration
+   * @returns {this} GivenStep instance for method chaining
+   * @example
+   * ```typescript
+   * restified.given()
+   *   .connectionPool({
+   *     keepAlive: true,
+   *     maxSockets: 50,
+   *     http2: true
+   *   })
+   *   .baseURL('https://api.example.com')
+   * .when()
+   *   .get('/users')
+   * ```
+   */
+  connectionPool(config: ConnectionPoolConfig): this {
+    this.config.connectionPool = config;
+    return this;
+  }
+
+  /**
+   * Configure smart retry mechanism for request reliability
+   * @param {RetryConfig} config - Retry configuration
+   * @returns {this} GivenStep instance for method chaining
+   * @example
+   * ```typescript
+   * restified.given()
+   *   .retry({
+   *     enabled: true,
+   *     maxAttempts: 3,
+   *     baseDelay: 1000,
+   *     retryOnStatusCodes: [429, 500, 502, 503, 504]
+   *   })
+   *   .baseURL('https://api.example.com')
+   * .when()
+   *   .get('/users')
+   * ```
+   */
+  retry(config: RetryConfig): this {
+    this.config.retry = config;
+    return this;
+  }
+
+  /**
+   * Configure Circuit Breaker pattern for network resilience
+   * @param {CircuitBreakerConfig} config - Circuit breaker configuration
+   * @returns {this} GivenStep instance for method chaining
+   * @example
+   * ```typescript
+   * restified.given()
+   *   .circuitBreaker({
+   *     enabled: true,
+   *     failureThreshold: 5,
+   *     failureThresholdPercentage: 50,
+   *     requestVolumeThreshold: 10,
+   *     resetTimeoutDuration: 60000
+   *   })
+   *   .baseURL('https://api.example.com')
+   * .when()
+   *   .get('/users')
+   * ```
+   */
+  circuitBreaker(config: CircuitBreakerConfig): this {
+    this.config.circuitBreaker = config;
+    return this;
+  }
+
+  /**
+   * Configure Request Timeout Intelligence for context-aware timeouts
+   * @param {TimeoutConfig} config - Timeout intelligence configuration
+   * @returns {this} GivenStep instance for method chaining
+   * @example
+   * ```typescript
+   * restified.given()
+   *   .timeoutIntelligence({
+   *     enabled: true,
+   *     baseTimeout: 30000,
+   *     adaptiveTimeout: true,
+   *     learningEnabled: true,
+   *     patternMatching: true,
+   *     timeoutMultiplier: 2.5
+   *   })
+   *   .baseURL('https://api.example.com')
+   * .when()
+   *   .get('/search?q=products')  // Will use longer timeout for search endpoints
+   * ```
+   */
+  timeoutIntelligence(config: TimeoutConfig): this {
+    this.config.timeoutIntelligence = config;
+    return this;
+  }
+
+  /**
+   * Configure Error Recovery with graceful degradation strategies
+   * @param {ErrorRecoveryConfig} config - Error recovery configuration
+   * @returns {this} GivenStep instance for method chaining
+   * @example
+   * ```typescript
+   * restified.given()
+   *   .errorRecovery({
+   *     enabled: true,
+   *     enableFallbacks: true,
+   *     enableCaching: true,
+   *     enableDegradation: true,
+   *     maxFallbackAttempts: 3,
+   *     fallbackStrategies: ['cache', 'default', 'synthetic']
+   *   })
+   *   .baseURL('https://api.example.com')
+   * .when()
+   *   .get('/users')  // Will fallback gracefully if service fails
+   * ```
+   */
+  errorRecovery(config: ErrorRecoveryConfig): this {
+    this.config.errorRecovery = config;
+    return this;
+  }
+
+  /**
+   * Configure Advanced Performance optimizations (deduplication, caching, batching, streaming)
+   * @param {AdvancedPerformanceConfig} config - Advanced performance configuration
+   * @returns {this} GivenStep instance for method chaining
+   * @example
+   * ```typescript
+   * restified.given()
+   *   .advancedPerformance({
+   *     enabled: true,
+   *     deduplication: { enabled: true, maxWaitTime: 30000 },
+   *     caching: { enabled: true, maxCacheSize: 1000, defaultTtl: 300000 },
+   *     batching: { enabled: true, maxBatchSize: 10, batchTimeout: 100 },
+   *     streaming: { enabled: true, chunkSize: 65536 }
+   *   })
+   *   .baseURL('https://api.example.com')
+   * .when()
+   *   .get('/users')  // Will use performance optimizations
+   * ```
+   */
+  advancedPerformance(config: AdvancedPerformanceConfig): this {
+    this.config.advancedPerformance = config;
+    return this;
+  }
+
+  when(): import('./when.core').WhenStep {
+    const { WhenStep } = require('./when.core');
     return new WhenStep(this.context, this.config);
   }
 

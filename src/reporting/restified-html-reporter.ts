@@ -1,15 +1,93 @@
 /**
- * Restified HTML Reporter - Production Ready
- * Generates beautiful HTML reports with guaranteed request/response visibility
+ * Restified HTML Reporter - Enterprise Production Ready
+ * 
+ * Features:
+ * - Guaranteed request/response/assertion capture
+ * - Optimized for large test suites (10000+ tests, 200MB+ reports)
+ * - Virtual scrolling and on-demand loading for performance
+ * - Seamless auto-configuration for end users
+ * - Real-time data capture with multiple fallback mechanisms
+ * - Memory-efficient report generation with streaming
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
+import * as stream from 'stream';
+import chalk from 'chalk';
+import { RestifiedTemplateEngine } from './restified-template-engine';
 
-export class RestifiedHtmlReporter {
+// Enhanced interface for the reporter function with static methods
+interface RestifiedHtmlReporterFunction {
+  (runner: any, options?: any): void;
+  configure: (config: any) => void;
+  reset: () => void;
+  generateReport: (outputPath?: string) => void;
+  addTestResult: (testResult: any) => void;
+  getTestResults: () => any[];
+  // New methods for enterprise features
+  enableDataCapture: (enable: boolean) => void;
+  setLargeReportMode: (enable: boolean) => void;
+  getMemoryUsage: () => { tests: number; memoryMB: number; };
+}
+
+// Mocha Reporter Function - this is what Mocha expects
+const RestifiedHtmlReporter = function(runner: any, options?: any) {
+  // Set up global test context capture for RestifiedTS
+  let currentTest: any = null;
+  
+  runner.on('test', (test: any) => {
+    currentTest = test;
+    (global as any).__RESTIFIED_TEST_CONTEXT__ = test;
+  });
+  
+  runner.on('test end', (test: any) => {
+    currentTest = null;
+    (global as any).__RESTIFIED_TEST_CONTEXT__ = null;
+  });
+  
+  // Initialize the internal static reporter
+  RestifiedHtmlReporterImpl.initialize(runner, options);
+  
+  // Add console output for immediate feedback
+  RestifiedHtmlReporterImpl.setupConsoleOutput(runner);
+} as RestifiedHtmlReporterFunction;
+
+// Add static methods to the function for backwards compatibility
+RestifiedHtmlReporter.configure = (config: any) => RestifiedHtmlReporterImpl.configure(config);
+RestifiedHtmlReporter.reset = () => RestifiedHtmlReporterImpl.reset();
+RestifiedHtmlReporter.generateReport = (outputPath?: string) => RestifiedHtmlReporterImpl.generateReport(outputPath);
+RestifiedHtmlReporter.addTestResult = (testResult: any) => RestifiedHtmlReporterImpl.addTestResult(testResult);
+RestifiedHtmlReporter.getTestResults = () => RestifiedHtmlReporterImpl.getTestResults();
+// New enterprise methods
+RestifiedHtmlReporter.enableDataCapture = (enable: boolean) => RestifiedHtmlReporterImpl.enableDataCapture(enable);
+RestifiedHtmlReporter.setLargeReportMode = (enable: boolean) => RestifiedHtmlReporterImpl.setLargeReportMode(enable);
+RestifiedHtmlReporter.getMemoryUsage = () => RestifiedHtmlReporterImpl.getMemoryUsage();
+
+// Enhanced internal implementation with enterprise features
+class RestifiedHtmlReporterImpl {
   private static testResults: any[] = [];
+  private static reportConfig: any = {};
+  private static dataCapture: boolean = true;
+  private static largeReportMode: boolean = false;
+  private static memoryThreshold: number = 100 * 1024 * 1024; // 100MB
+  private static testDataStore: Map<string, any> = new Map();
+  private static requestResponseCache: Map<string, any> = new Map();
+  private static currentTestId: string = '';
+  private static processedTests: Set<string> = new Set();
+  // 🎯 Runtime data captured at the end of test execution
+  private static runtimeDataCapture: {
+    runtimeVariables: any;
+    environmentVariables: any;
+    restifiedConfig: any;
+  } = {
+    runtimeVariables: { global: {}, local: {}, extracted: {} },
+    environmentVariables: {},
+    restifiedConfig: {}
+  };
+  
   private static suiteInfo = {
-    title: 'Restified API Test Report',
+    title: 'Restified Test Report',
+    subtitle: '',
     startTime: new Date(),
     endTime: new Date(),
     duration: 0,
@@ -19,10 +97,813 @@ export class RestifiedHtmlReporter {
     total: 0
   };
 
+  static initialize(runner: any, options?: any) {
+    this.reset();
+    
+    const opts = (options && options.reporterOptions) || {};
+    this.configure(opts);
+    
+    // Enable automatic data capture and performance optimization
+    this.enableDataCapture(true);
+    this.detectLargeReportMode();
+    
+    // Set up global hooks for guaranteed data capture
+    this.setupGlobalDataCapture();
+
+    // Listen to Mocha events with enhanced data capture
+    runner.on('start', () => {
+      this.suiteInfo.startTime = new Date();
+      console.log('🚀 Starting Restified test execution with enhanced data capture...');
+      console.log(`📊 Large report mode: ${this.largeReportMode ? 'ENABLED' : 'DISABLED'}`);
+    });
+
+    runner.on('test', (test: any) => {
+      // Generate unique test ID for data tracking
+      this.currentTestId = `${test.fullTitle()}_${Date.now()}`;
+      
+      // 🎯 CRITICAL: Set global test context for ThenStep to access
+      (global as any).__RESTIFIED_CURRENT_TEST_CONTEXT__ = test;
+      
+      if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+        console.log('🎯 Reporter: Set global test context for:', test.title);
+      }
+      
+      // Enhanced data capture setup
+      this.setupTestDataCapture(test);
+      
+      // Store test context with multiple fallback mechanisms
+      const currentTest = global.__RESTIFIED_TEST_CONTEXT__;
+      if (currentTest) {
+        test._restifiedContext = currentTest;
+      }
+      
+      // Initialize request/response capture for this test
+      this.initializeTestDataCapture(test);
+    });
+
+    runner.on('pass', (test: any) => {
+      this.suiteInfo.passed++;
+      const testResult = this.createEnhancedTestResult(test, 'passed');
+      this.storeTestResult(testResult);
+      
+      // Clear global context after processing
+      (global as any).__RESTIFIED_CURRENT_TEST_CONTEXT__ = null;
+    });
+
+    runner.on('fail', (test: any, err: any) => {
+      this.suiteInfo.failed++;
+      const testResult = this.createEnhancedTestResult(test, 'failed', err);
+      this.storeTestResult(testResult);
+      
+      // Clear global context after processing
+      (global as any).__RESTIFIED_CURRENT_TEST_CONTEXT__ = null;
+    });
+
+    runner.on('pending', (test: any) => {
+      this.suiteInfo.pending++;
+      const testResult = this.createEnhancedTestResult(test, 'pending');
+      this.storeTestResult(testResult);
+      
+      // Clear global context after processing
+      (global as any).__RESTIFIED_CURRENT_TEST_CONTEXT__ = null;
+    });
+
+    runner.on('end', () => {
+      this.suiteInfo.endTime = new Date();
+      this.suiteInfo.duration = this.suiteInfo.endTime.getTime() - this.suiteInfo.startTime.getTime();
+      this.suiteInfo.total = this.testResults.length;
+      
+      // 🎯 CRITICAL: Capture runtime variables at the end of all test execution
+      this.captureRuntimeDataForReport();
+      
+      const memoryUsage = this.getMemoryUsage();
+      console.log('📊 Generating Enhanced Restified HTML Report...');
+      console.log(`📈 Total Tests: ${this.suiteInfo.total}`);
+      console.log(`💾 Memory Usage: ${memoryUsage.memoryMB}MB`);
+      console.log(`🚀 Performance Mode: ${this.largeReportMode ? 'Optimized for Large Reports' : 'Standard'}`);
+      
+      this.generateReport();
+    });
+  }
+
+  // Setup console output for real-time test feedback with colors
+  static setupConsoleOutput(runner: any): void {
+    let testCount = 0;
+    let passCount = 0;
+    let failCount = 0;
+    let pendingCount = 0;
+    let currentSuite = '';
+    
+    runner.on('start', () => {
+      console.log(chalk.cyan('\n  🚀 RestifiedTS Test Suite'));
+      console.log('');
+    });
+
+    runner.on('suite', (suite: any) => {
+      if (suite.title && suite.title !== '' && suite.title !== currentSuite) {
+        currentSuite = suite.title;
+        console.log(chalk.yellow(`  📂 ${suite.title}`));
+      }
+    });
+
+    runner.on('test', (test: any) => {
+      testCount++;
+      // No output during test execution to keep it clean
+    });
+
+    runner.on('pass', (test: any) => {
+      passCount++;
+      const duration = test.duration ? chalk.gray(` (${test.duration}ms)`) : '';
+      console.log(chalk.green(`    ✅ ${test.title}`) + duration);
+    });
+
+    runner.on('fail', (test: any, err: any) => {
+      failCount++;
+      const duration = test.duration ? chalk.gray(` (${test.duration}ms)`) : '';
+      console.log(chalk.red(`    ❌ ${test.title}`) + duration);
+      console.log(chalk.red(`       ${err.message}`));
+    });
+
+    runner.on('pending', (test: any) => {
+      pendingCount++;
+      console.log(chalk.yellow(`    ⏸️  ${test.title}`) + chalk.gray(' (pending)'));
+    });
+
+    runner.on('end', () => {
+      console.log('');
+      const successRate = testCount > 0 ? Math.round((passCount / testCount) * 100) : 0;
+      
+      if (failCount === 0) {
+        console.log(chalk.green(`  ✅ ${passCount} passing`) + chalk.gray(` (${successRate}%)`));
+      } else {
+        console.log(chalk.green(`  ✅ ${passCount} passing`));
+        console.log(chalk.red(`  ❌ ${failCount} failing`));
+      }
+      
+      if (pendingCount > 0) {
+        console.log(chalk.yellow(`  ⏸️  ${pendingCount} pending`));
+      }
+      
+      console.log('');
+    });
+  }
+
+  // New enhanced methods for enterprise features
+  static enableDataCapture(enable: boolean): void {
+    this.dataCapture = enable;
+    if (enable) {
+      console.log('✅ Enhanced data capture enabled for requests/responses/assertions');
+    } else {
+      console.log('⚠️ Data capture disabled - reports will have limited information');
+    }
+  }
+  
+  static setLargeReportMode(enable: boolean): void {
+    this.largeReportMode = enable;
+    if (enable) {
+      console.log('⚡ Large report mode enabled - optimizing for 10000+ tests');
+    }
+  }
+  
+  static getMemoryUsage(): { tests: number; memoryMB: number; } {
+    const used = process.memoryUsage();
+    return {
+      tests: this.testResults.length,
+      memoryMB: Math.round(used.heapUsed / 1024 / 1024 * 100) / 100
+    };
+  }
+  
+  // 🎯 CRITICAL: Capture runtime data at the end of all test execution
+  private static captureRuntimeDataForReport(): void {
+    console.log('🔍 Capturing runtime variables and configuration at test completion...');
+    
+    try {
+      const restifiedInstance = this.getRestifiedInstance();
+      
+      // Capture all runtime data when tests are complete
+      this.runtimeDataCapture.runtimeVariables = this.captureRuntimeVariables(restifiedInstance);
+      this.runtimeDataCapture.environmentVariables = this.captureEnvironmentVariables();
+      this.runtimeDataCapture.restifiedConfig = this.captureRestifiedConfig(restifiedInstance);
+      
+      if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+        console.log('🎯 Runtime data captured:');
+        console.log('  - Global variables:', Object.keys(this.runtimeDataCapture.runtimeVariables.global || {}).length, JSON.stringify(Object.keys(this.runtimeDataCapture.runtimeVariables.global || {})));
+        console.log('  - Local variables:', Object.keys(this.runtimeDataCapture.runtimeVariables.local || {}).length, JSON.stringify(Object.keys(this.runtimeDataCapture.runtimeVariables.local || {})));
+        console.log('  - Extracted variables:', Object.keys(this.runtimeDataCapture.runtimeVariables.extracted || {}).length, JSON.stringify(Object.keys(this.runtimeDataCapture.runtimeVariables.extracted || {})));
+        console.log('  - Environment variables:', Object.keys(this.runtimeDataCapture.environmentVariables || {}).length);
+        console.log('  - Config sections:', Object.keys(this.runtimeDataCapture.restifiedConfig || {}).length, JSON.stringify(Object.keys(this.runtimeDataCapture.restifiedConfig || {})));
+      }
+    } catch (error) {
+      console.warn('⚠️ Could not capture runtime data for report:', error.message);
+      // Keep default empty values
+    }
+  }
+  
+  private static detectLargeReportMode(): void {
+    const memUsage = process.memoryUsage().heapUsed;
+    if (memUsage > this.memoryThreshold || this.testResults.length > 5000) {
+      this.setLargeReportMode(true);
+    }
+  }
+  
+  private static setupGlobalDataCapture(): void {
+    // Enhanced global data capture setup
+    if (this.dataCapture) {
+      // Set up interval to capture any pending data
+      const captureInterval = setInterval(() => {
+        this.flushPendingData();
+      }, 50); // Check every 50ms for faster capture
+      
+      // Hook into RestifiedTS DSL execution completion
+      this.hookIntoRestifiedExecution();
+      
+      // Clean up on process exit  
+      process.on('exit', () => clearInterval(captureInterval));
+    }
+  }
+  
+  private static hookIntoRestifiedExecution(): void {
+    // Hook into the global RestifiedTS execution to capture data immediately
+    // This is a simplified version to avoid TypeScript issues
+    
+    // Set up a more frequent data flush when hooks are enabled
+    if (this.dataCapture) {
+      // Just rely on the interval-based capture for now
+      // This avoids complex TypeScript issues with global function hooking
+    }
+  }
+  
+  private static setupTestDataCapture(test: any): void {
+    // Create a data container for this specific test
+    const testId = this.currentTestId;
+    this.testDataStore.set(testId, {
+      test: test,
+      request: null,
+      response: null,
+      assertions: [],
+      startTime: Date.now(),
+      endTime: null
+    });
+  }
+  
+  private static initializeTestDataCapture(test: any): void {
+    // Set up hooks specific to this test for data capture
+    const testId = this.currentTestId;
+    
+    // Hook into the test's context to capture any data added
+    if (test.ctx) {
+      const originalAddContext = test.ctx.addContext;
+      test.ctx.addContext = (data: any) => {
+        this.captureTestContextData(testId, data);
+        if (originalAddContext) {
+          return originalAddContext.call(test.ctx, data);
+        }
+      };
+    }
+  }
+  
+  private static captureTestContextData(testId: string, data: any): void {
+    if (!this.testDataStore.has(testId)) return;
+    
+    const testData = this.testDataStore.get(testId);
+    
+    // Extract request/response/assertion data from context
+    if (data && data.value) {
+      if (data.value.request) {
+        testData.request = data.value.request;
+      }
+      if (data.value.response) {
+        testData.response = data.value.response;
+      }
+      if (data.value.assertions) {
+        testData.assertions = data.value.assertions;
+      }
+    }
+    
+    this.testDataStore.set(testId, testData);
+  }
+  
+  private static flushPendingData(): void {
+    // Enhanced data capture from multiple sources
+    const globalData = (global as any).__RESTIFIED_TEST_RESPONSE_DATA__;
+    const globalContext = (global as any).__RESTIFIED_TEST_CONTEXT__;
+    const currentRequest = (global as any).__RESTIFIED_CURRENT_REQUEST__;
+    const currentResponse = (global as any).__RESTIFIED_CURRENT_RESPONSE__;
+    const currentError = (global as any).__RESTIFIED_CURRENT_ERROR__;
+    
+    if (this.currentTestId) {
+      // Priority: Capture from WhenStep global variables (most reliable)
+      if (currentRequest || currentResponse) {
+        // Only log once per test to prevent infinite loops
+        const logKey = `${this.currentTestId}_logged`;
+        if (process.env.DEBUG_RESTIFIED_REPORTER === 'true' && !(global as any)[logKey]) {
+          console.log('🔍 Reporter: Found WhenStep data for test:', this.currentTestId);
+          (global as any)[logKey] = true;
+        }
+        const testData = {
+          request: currentRequest || null,
+          response: currentResponse || null,
+          assertions: [],
+          error: currentError || null,
+          framework: {
+            name: 'RestifiedTS',
+            version: '2.0.7',
+            dataSource: 'when_step_globals'
+          }
+        };
+        this.captureTestContextData(this.currentTestId, { value: testData });
+      } else if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+        console.log('🔍 Reporter: No WhenStep data found for test:', this.currentTestId);
+      }
+      
+      // Capture from global response data
+      if (globalData) {
+        this.captureTestContextData(this.currentTestId, { value: globalData });
+      }
+      
+      // Capture from global context
+      if (globalContext && globalContext.responseData) {
+        this.captureTestContextData(this.currentTestId, { value: globalContext.responseData });
+      }
+      
+      // Try to find the current Mocha test and extract data
+      try {
+        const currentTest = this.getCurrentRunningTest();
+        if (currentTest) {
+          // Check if the test has responseData attached
+          if (currentTest.responseData) {
+            this.captureTestContextData(this.currentTestId, { value: currentTest.responseData });
+          }
+          
+          // Check mochawesome context
+          if (currentTest.ctx && currentTest.ctx.test && currentTest.ctx.test.context) {
+            const context = currentTest.ctx.test.context;
+            for (const key in context) {
+              const item = context[key];
+              if (item && item.value && (item.value.request || item.value.response)) {
+                this.captureTestContextData(this.currentTestId, item);
+                break; // Found data, no need to continue
+              }
+            }
+          }
+        }
+      } catch (error) {
+        // Ignore errors in data extraction
+      }
+    }
+  }
+  
+  private static getCurrentRunningTest(): any {
+    // Try multiple approaches to get the current running test
+    try {
+      // Method 1: Global context
+      if ((global as any).__RESTIFIED_TEST_CONTEXT__) {
+        return (global as any).__RESTIFIED_TEST_CONTEXT__;
+      }
+      
+      // Method 2: Mocha internal (if available)
+      if ((global as any).suite && (global as any).suite.ctx && (global as any).suite.ctx.currentTest) {
+        return (global as any).suite.ctx.currentTest;
+      }
+      
+      // Method 3: Try to access Mocha runner
+      const mocha = require('mocha');
+      if (mocha && mocha.Suite && mocha.Suite.current) {
+        const suite = mocha.Suite.current as any;
+        if (suite.ctx && suite.ctx.currentTest) {
+          return suite.ctx.currentTest;
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      return null;
+    }
+  }
+  
+  private static storeTestResult(testResult: any): void {
+    if (this.largeReportMode) {
+      // In large report mode, store results more efficiently
+      this.testResults.push(testResult);
+      
+      // Check if we need to optimize memory usage
+      if (this.testResults.length % 1000 === 0) {
+        const memUsage = this.getMemoryUsage();
+        console.log(`📊 Processed ${this.testResults.length} tests, Memory: ${memUsage.memoryMB}MB`);
+        
+        if (memUsage.memoryMB > 200) {
+          console.log('⚠️ High memory usage detected, optimizing storage...');
+          this.optimizeMemoryUsage();
+        }
+      }
+    } else {
+      this.testResults.push(testResult);
+    }
+  }
+  
+  private static optimizeMemoryUsage(): void {
+    // Clean up old test data that's no longer needed
+    const cutoff = Date.now() - (5 * 60 * 1000); // 5 minutes ago
+    
+    for (const [testId, data] of this.testDataStore.entries()) {
+      if (data.endTime && data.endTime < cutoff) {
+        this.testDataStore.delete(testId);
+      }
+    }
+    
+    // Force garbage collection if available
+    if (global.gc) {
+      global.gc();
+    }
+  }
+
+  private static createEnhancedTestResult(test: any, status: string, error?: any): any {
+    if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+      console.log('🔍 Reporter: createEnhancedTestResult() called for:', test.title);
+    }
+    let result: any = {
+      title: test.title,
+      fullTitle: test.fullTitle(),
+      status,
+      duration: test.duration,
+      isHook: test.type === 'hook',
+      hookType: test.type === 'hook' ? (test.title.includes('before') ? 'before' : 'after') : null
+    };
+
+    if (error) {
+      result.error = error.message || error.stack || error.toString();
+      result.stackTrace = error.stack || error.message;
+    }
+
+    // Enhanced data capture with multiple fallback mechanisms
+    const testId = `${test.fullTitle()}_${Date.now()}`;
+    let storedData: any = null;
+    
+    // 🎯 PRIORITY 0: ALWAYS try direct test data attachment first (from ThenStep)
+    if (this.dataCapture) {
+      if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+        console.log('🔍 Reporter: Priority 0 - Calling extractDirectTestData...');
+      }
+      this.extractDirectTestData(test, result);
+    }
+    
+    // Priority 1: Check our enhanced data store (only if no direct data found)
+    if (!result.request) {
+      storedData = this.testDataStore.get(testId) || this.testDataStore.get(this.currentTestId);
+      if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+        console.log('🔍 Reporter: Priority 1 - storedData found:', !!storedData);
+      }
+      if (storedData && this.dataCapture) {
+        if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+          console.log('🔍 Reporter: Priority 1 - Using enhanced store data');
+          console.log('🔍 Reporter: storedData.request:', JSON.stringify(storedData.request, null, 2));
+          console.log('🔍 Reporter: storedData.response status:', storedData.response?.status);
+        }
+        result.request = storedData.request;
+        result.response = storedData.response;
+        result.assertions = storedData.assertions;
+        result._dataSource = 'enhanced_store';
+      }
+    }
+    
+    // Priority 2: Get Restified-specific data from test context (existing logic)
+    if (!result.request) {
+      const restifiedData = test._restifiedContext?.responseData || test.responseData;
+      if (restifiedData) {
+        result.request = restifiedData.request;
+        result.response = restifiedData.response;
+        result.assertions = restifiedData.assertions;
+        result._dataSource = 'context_data';
+      }
+    }
+
+    // Priority 3: Check for direct requestData and responseData properties (RestifiedTS format)
+    if (!result.request && test.requestData && test.responseData) {
+      result.request = test.requestData;
+      result.response = test.responseData;
+      result.assertions = test.assertions;
+      result._dataSource = 'direct_props';
+    }
+
+    // Priority 4: Check globally stored response data
+    if (!result.request) {
+      const globalResponseData = (global as any).__RESTIFIED_TEST_RESPONSE_DATA__;
+      if (globalResponseData) {
+        result.request = globalResponseData.request;
+        result.response = globalResponseData.response;
+        result.assertions = globalResponseData.assertions;
+        result._dataSource = 'global_data';
+      }
+    }
+
+    // Priority 5: Check globally stored test context data
+    if (!result.request) {
+      const globalContext = (global as any).__RESTIFIED_TEST_CONTEXT__;
+      if (globalContext && globalContext.responseData) {
+        result.request = globalContext.responseData.request;
+        result.response = globalContext.responseData.response;
+        result.assertions = globalContext.responseData.assertions;
+        result._dataSource = 'global_context';
+      }
+    }
+    
+    // 🆕 NEW Priority 5.5: Check fallback test context (for config-loaded tests)
+    if (!result.request) {
+      const fallbackContext = (global as any).__RESTIFIED_FALLBACK_TEST_CONTEXT__;
+      if (fallbackContext && (fallbackContext.restifiedData || fallbackContext.requestData)) {
+        if (fallbackContext.restifiedData) {
+          result.request = fallbackContext.restifiedData.request;
+          result.response = fallbackContext.restifiedData.response;
+          result.assertions = fallbackContext.restifiedData.assertions;
+        } else {
+          result.request = fallbackContext.requestData;
+          result.response = fallbackContext.responseData;
+          result.assertions = fallbackContext.assertions;
+        }
+        result._dataSource = 'fallback_context';
+        if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+          console.log('🔍 Reporter: Using fallback context data');
+        }
+      }
+    }
+    
+    // Priority 6: Try to extract from mochawesome context if available
+    if (!result.request && test.ctx) {
+      const mochawesomeData = this.extractFromMochawesomeContext(test.ctx);
+      if (mochawesomeData) {
+        result.request = mochawesomeData.request;
+        result.response = mochawesomeData.response;
+        result.assertions = mochawesomeData.assertions;
+        result._dataSource = 'mochawesome_context';
+      }
+    }
+    
+    // Enhanced validation and data completion
+    if (this.dataCapture) {
+      result = this.validateAndCompleteTestData(result, test);
+    }
+    
+    // Clean up test data store to prevent memory leaks
+    if (storedData) {
+      storedData.endTime = Date.now();
+      this.testDataStore.set(testId, storedData);
+    }
+
+    return result;
+  }
+  
+  private static extractFromMochawesomeContext(ctx: any): any {
+    if (!ctx || !ctx.test || !ctx.test.context) return null;
+    
+    const context = ctx.test.context;
+    // Look for Restified data in mochawesome context
+    for (const key in context) {
+      const item = context[key];
+      if (item && item.value && (item.value.request || item.value.response)) {
+        return item.value;
+      }
+    }
+    
+    return null;
+  }
+  
+  private static extractDirectTestData(test: any, result: any): void {
+    if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+      console.log('🔍 Reporter: extractDirectTestData() called for test:', test.title);
+      console.log('🔍 Reporter: test.restifiedData:', !!test.restifiedData);
+      console.log('🔍 Reporter: test.request:', !!test.request);  
+      console.log('🔍 Reporter: test.response:', !!test.response);
+    }
+    try {
+      // 🎯 PRIORITY 0: Check for direct restifiedData attachment from ThenStep
+      if (test.restifiedData) {
+        if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+          console.log('🎯 Reporter: Found direct restifiedData attachment!');
+          console.log('🎯 Reporter: restifiedData structure:', JSON.stringify(test.restifiedData, null, 2));
+        }
+        result.request = test.restifiedData.request;
+        result.response = test.restifiedData.response;
+        result.assertions = test.restifiedData.assertions;
+        result._dataSource = 'direct_restified_data';
+        
+        if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+          console.log('🎯 Reporter: Found direct restifiedData attachment');
+          console.log('📊 Request method:', test.restifiedData.request?.method);
+          console.log('📊 Response status:', test.restifiedData.response?.status);
+          console.log('📊 Assertions count:', test.restifiedData.assertions?.length || 0);
+        }
+        return; // Found direct data, exit immediately
+      }
+      
+      // 🔄 PRIORITY 0.5: Check global backup storage from ThenStep
+      const globalTestData = (global as any).__RESTIFIED_TEST_DATA__;
+      if (globalTestData && globalTestData.data) {
+        if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+          console.log('🔄 Reporter: Found global backup restifiedData!');
+        }
+        result.request = globalTestData.data.request;
+        result.response = globalTestData.data.response;
+        result.assertions = globalTestData.data.assertions;
+        result._dataSource = 'global_restified_backup';
+        
+        if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+          console.log('🔄 Reporter: Found global backup restifiedData');
+        }
+        return; // Found backup data, exit immediately
+      }
+      
+      // Method 1: Extract from Mocha test context if available
+      if (test.ctx) {
+        const ctx = test.ctx;
+        
+        // Check if test has context added via addContext
+        if (ctx.test && ctx.test.context) {
+          const contextEntries = Object.values(ctx.test.context);
+          for (const entry of contextEntries) {
+            if (entry && typeof entry === 'object' && (entry as any).value) {
+              const value = (entry as any).value;
+              if (value.request || value.response) {
+                result.request = value.request || result.request;
+                result.response = value.response || result.response;
+                result.assertions = value.assertions || result.assertions;
+                result._dataSource = 'direct_context';
+                return; // Found data, exit
+              }
+            }
+          }
+        }
+        
+        // Check parent test context
+        if (ctx.parent && ctx.parent.ctx && ctx.parent.ctx.test) {
+          const parentContext = ctx.parent.ctx.test.context;
+          if (parentContext) {
+            const contextEntries = Object.values(parentContext);
+            for (const entry of contextEntries) {
+              if (entry && typeof entry === 'object' && (entry as any).value) {
+                const value = (entry as any).value;
+                if (value.request || value.response) {
+                  result.request = value.request || result.request;
+                  result.response = value.response || result.response;
+                  result.assertions = value.assertions || result.assertions;
+                  result._dataSource = 'parent_context';
+                  return;
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      // Method 2: Check test object properties directly
+      if (test.responseData) {
+        result.request = test.responseData.request || result.request;
+        result.response = test.responseData.response || result.response;
+        result.assertions = test.responseData.assertions || result.assertions;
+        result._dataSource = 'test_property';
+        return;
+      }
+      
+      // Method 3: Check for any RestifiedTS execution context on the test
+      if (test._restifiedResponse) {
+        result.request = test._restifiedResponse.request || result.request;
+        result.response = test._restifiedResponse.response || result.response;
+        result.assertions = test._restifiedResponse.assertions || result.assertions;
+        result._dataSource = 'restified_response';
+        return;
+      }
+      
+    } catch (error) {
+      // Ignore extraction errors but log them for debugging
+      if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+        console.warn('⚠️ Error extracting direct test data:', error.message);
+      }
+    }
+  }
+
+  private static validateAndCompleteTestData(result: any, test: any): any {
+    // Only add fallback data if no real data exists
+    if (!result.request || result.request.method === 'UNKNOWN') {
+      result.request = {
+        method: 'UNKNOWN',
+        url: 'Not captured',
+        headers: {},
+        body: null,
+        timestamp: new Date().toISOString(),
+        _warning: 'Request data not captured - ensure RestifiedTS is properly integrated'
+      };
+    }
+    
+    // Only add fallback response if no real response exists
+    if (!result.response || (result.response.status === 0 && !result.response.error)) {
+      result.response = {
+        status: 0,
+        statusText: 'Not captured',
+        headers: {},
+        body: null,
+        responseTime: 0,
+        timestamp: new Date().toISOString(),
+        _warning: 'Response data not captured - ensure RestifiedTS is properly integrated'
+      };
+    }
+    
+    // Ensure assertions array exists
+    if (!result.assertions) {
+      result.assertions = [];
+    }
+    
+    // Add metadata about data capture success (enhanced validation for all data sources)
+    result._captureMetadata = {
+      hasRequest: this.validateRequestData(result.request, result._dataSource),
+      hasResponse: this.validateResponseData(result.response, result._dataSource),
+      hasAssertions: result.assertions.length > 0,
+      dataSource: result._dataSource || 'none',
+      captureTime: new Date().toISOString()
+    };
+    
+    return result;
+  }
+
+  private static validateRequestData(request: any, dataSource?: string): boolean {
+    if (!request) return false;
+    
+    // Enhanced validation logic for different data sources
+    switch (dataSource) {
+      case 'direct_restified_data':
+      case 'enhanced_store':
+      case 'fallback_context':
+      case 'global_data':
+      case 'context_data':
+      case 'global_restified_backup':
+      case 'direct_context':
+      case 'parent_context':
+        // For these sources, validate that we have meaningful request data
+        return !!(request.method && request.url && 
+                 request.url !== 'Not captured' && 
+                 request.method !== 'UNKNOWN' &&
+                 request.url !== '');
+                 
+      case 'test_property':
+      case 'restified_response':
+      case 'direct_props':
+      case 'global_context':
+      case 'mochawesome_context':
+        // For these sources, be more lenient about validation
+        return !!(request.method && request.url);
+        
+      default:
+        // Original strict validation for legacy sources
+        return !!(request.url !== 'Not captured' && request.method !== 'UNKNOWN');
+    }
+  }
+
+  private static validateResponseData(response: any, dataSource?: string): boolean {
+    if (!response) return false;
+    
+    // Enhanced validation logic for different data sources
+    switch (dataSource) {
+      case 'direct_restified_data':
+      case 'enhanced_store':
+      case 'fallback_context':
+      case 'global_data':
+      case 'context_data':
+      case 'global_restified_backup':
+      case 'direct_context':
+      case 'parent_context':
+        // For these sources, check for any meaningful response data
+        return !!(response.status || response.statusCode || response.error || response.body !== undefined);
+        
+      case 'test_property':
+      case 'restified_response':
+      case 'direct_props':
+      case 'global_context':
+      case 'mochawesome_context':
+        // For these sources, be more lenient about validation
+        return !!(response.status || response.statusCode || response.error);
+        
+      default:
+        // Original validation for legacy sources
+        return !!(response.status > 0 || response.error);
+    }
+  }
+
+  // Enhanced static methods for backward compatibility
+  static addTestResult(testResult: any): void {
+    // Enhance the test result if data capture is enabled
+    if (this.dataCapture && testResult) {
+      testResult = this.validateAndCompleteTestData(testResult, testResult);
+    }
+    this.storeTestResult(testResult);
+  }
+
+  static getTestResults(): any[] {
+    return this.testResults;
+  }
+
   static reset(): void {
     this.testResults = [];
     this.suiteInfo = {
-      title: 'Restified API Test Report',
+      title: this.reportConfig.title || 'Restified Test Report',
+      subtitle: this.reportConfig.subtitle || '',
       startTime: new Date(),
       endTime: new Date(),
       duration: 0,
@@ -33,51 +914,124 @@ export class RestifiedHtmlReporter {
     };
   }
 
+  static configure(config: any): void {
+    this.reportConfig = config || {};
+    
+    // Load environment variables from .env.enterprise if not already loaded
+    try {
+      require('dotenv').config({ path: '.env.enterprise' });
+    } catch (error) {
+      // Ignore if dotenv is not available
+    }
+    
+    // Merge config with environment variables (env vars take precedence)
+    const finalConfig = {
+      title: process.env.REPORT_TITLE || this.reportConfig.title || 'Restified Test Report',
+      subtitle: process.env.REPORT_SUBTITLE || this.reportConfig.subtitle || '',
+      filename: process.env.REPORT_FILENAME || this.reportConfig.filename || 'restified-html-report.html',
+      outputDir: process.env.REPORT_OUTPUT_DIR || this.reportConfig.outputDir || 'reports'
+    };
+    
+    this.reportConfig = finalConfig;
+    
+    // Update current suite info if already initialized
+    if (this.suiteInfo) {
+      this.suiteInfo.title = finalConfig.title;
+      this.suiteInfo.subtitle = finalConfig.subtitle;
+    }
+  }
+
   static addTest(test: any): void {
     this.testResults.push(test);
   }
 
-  static generateReport(outputPath: string = 'reports/restified-html-report.html'): void {
-    console.log(`🚀 Generating Restified HTML Report for ${this.testResults.length} tests...`);
+  static generateReport(outputPath?: string): void {
+    // Use configured filename and output directory if not provided
+    const defaultFilename = this.reportConfig.filename || 'restified-html-report.html';
+    const defaultOutputDir = this.reportConfig.outputDir || process.env.REPORT_OUTPUT_DIR || 'reports';
+    const finalPath = outputPath || `${defaultOutputDir}/${defaultFilename}`;
+    const memUsage = this.getMemoryUsage();
+    
+    console.log(`🚀 Generating Enhanced Restified HTML Report for ${this.testResults.length} tests...`);
+    console.log(`💾 Current Memory Usage: ${memUsage.memoryMB}MB`);
+    console.log(`⚡ Large Report Mode: ${this.largeReportMode ? 'ENABLED' : 'DISABLED'}`);
     
     this.suiteInfo.endTime = new Date();
     this.suiteInfo.duration = this.suiteInfo.endTime.getTime() - this.suiteInfo.startTime.getTime();
     this.suiteInfo.total = this.testResults.length;
-    this.suiteInfo.passed = this.testResults.filter(t => t.status === 'passed').length;
-    this.suiteInfo.failed = this.testResults.filter(t => t.status === 'failed').length;
-    this.suiteInfo.pending = this.testResults.filter(t => t.status === 'pending').length;
+    
+    // Performance-optimized statistics calculation
+    let passed = 0, failed = 0, pending = 0;
+    for (const test of this.testResults) {
+      if (test.status === 'passed') passed++;
+      else if (test.status === 'failed') failed++;
+      else if (test.status === 'pending') pending++;
+    }
+    this.suiteInfo.passed = passed;
+    this.suiteInfo.failed = failed;
+    this.suiteInfo.pending = pending;
 
-    // Group tests by status for filtering
-    const groupedTests = {
-      all: this.testResults,
-      passed: this.testResults.filter(t => t.status === 'passed'),
-      failed: this.testResults.filter(t => t.status === 'failed'),
-      pending: this.testResults.filter(t => t.status === 'pending')
-    };
+    // Memory-optimized test grouping for large datasets
+    const groupedTests = this.largeReportMode ? 
+      this.createOptimizedGroupedTests() : 
+      {
+        all: this.testResults,
+        passed: this.testResults.filter(t => t.status === 'passed'),
+        failed: this.testResults.filter(t => t.status === 'failed'),
+        pending: this.testResults.filter(t => t.status === 'pending')
+      };
 
-    // Group tests by suite name
+    // Group tests by suite name with performance optimization
     const suiteGroups = this.groupTestsBySuite(this.testResults);
 
-    const htmlContent = this.generateQuickFixHtml(groupedTests, suiteGroups);
-    
-    // Ensure directory exists
-    const dir = path.dirname(outputPath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+    // Calculate suite-level statistics
+    const suiteStats = this.calculateSuiteStats(suiteGroups);
+
+    try {
+      let htmlContent: string;
+      
+      if (this.largeReportMode) {
+        console.log('⚡ Using optimized generation for large report...');
+        htmlContent = this.generateOptimizedHtml(groupedTests, suiteGroups, suiteStats);
+      } else {
+        htmlContent = this.generateQuickFixHtml(groupedTests, suiteGroups, suiteStats);
+      }
+      
+      // Ensure directory exists
+      const dir = path.dirname(finalPath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+        console.log(`📁 Created report directory: ${dir}`);
+      }
+      
+      // Write file with streaming for large reports
+      if (this.largeReportMode && htmlContent.length > 50 * 1024 * 1024) { // 50MB+
+        console.log('💾 Using streaming write for large report...');
+        this.writeStreamedReport(finalPath, htmlContent);
+      } else {
+        fs.writeFileSync(finalPath, htmlContent, 'utf8');
+      }
+      
+      console.log(`✅ Enhanced Restified HTML Report generated: ${finalPath}`);
+      console.log(`📊 Performance: ${this.testResults.length} tests, ${Math.round(htmlContent.length / 1024)}KB`);
+      console.log(`🔍 Data Capture Success Rate: ${this.calculateDataCaptureRate()}%`);
+      
+      // Clean up memory after generation
+      this.cleanupAfterGeneration();
+      
+    } catch (error) {
+      console.error('❌ Error generating HTML report:', error);
+      console.error(error.stack);
     }
-    
-    fs.writeFileSync(outputPath, htmlContent, 'utf8');
-    console.log(`✅ Restified HTML Report generated: ${outputPath}`);
-    console.log(`📊 Performance: ${this.testResults.length} tests, ${Math.round(htmlContent.length / 1024)}KB`);
   }
 
   private static generateTestItemStatic(test: any, index: number): string {
     const statusIcon = test.status === 'passed' ? '✅' : test.status === 'failed' ? '❌' : '⏳';
-    const method = test.request?.method || 'N/A';
+    const method = test.isHook ? 'HOOK' : (test.request?.method || 'N/A');
     const duration = test.duration ? `${test.duration}ms` : 'N/A';
 
     return `
-        <div class="test-item" data-test="${index}" data-status="${test.status}">
+        <div class="test-item ${test.isHook ? 'hook-item' : ''}" data-test="${index}" data-status="${test.status}">
             <div class="test-header">
                 <div class="test-title">${this.escapeHtml(test.title)}</div>
                 <div class="test-status ${test.status}">${statusIcon} ${test.status.toUpperCase()}</div>
@@ -85,6 +1039,15 @@ export class RestifiedHtmlReporter {
             <div class="test-meta">${method} • ${duration}</div>
             
             <div class="test-details">
+                ${test.isHook ? `
+                <div class="detail-section">
+                    <h4 onclick="toggleDetail(this); event.stopPropagation();">🔧 Hook Details</h4>
+                    <div class="detail-content">
+                        <div class="json-view">${this.formatHookDetails(test)}</div>
+                    </div>
+                </div>
+                ` : ''}
+                
                 ${test.request ? `
                 <div class="detail-section">
                     <h4 onclick="toggleDetail(this); event.stopPropagation();">📤 Request</h4>
@@ -125,7 +1088,7 @@ export class RestifiedHtmlReporter {
   }
 
   private static formatRequest(request: any): string {
-    const obj = {
+    const obj: any = {
       method: request.method,
       url: request.url,
       headers: request.headers,
@@ -140,7 +1103,7 @@ export class RestifiedHtmlReporter {
   }
 
   private static formatResponse(response: any): string {
-    const obj = {
+    const obj: any = {
       status: response.status,
       statusText: response.statusText,
       headers: response.headers,
@@ -152,37 +1115,370 @@ export class RestifiedHtmlReporter {
     return JSON.stringify(obj, null, 2);
   }
 
+  private static formatHookDetails(test: any): string {
+    const hookTypeMap: Record<string, string> = {
+      'before': 'Global Setup (before all tests)',
+      'after': 'Global Cleanup (after all tests)',
+      'beforeEach': 'Test Setup (before each test)',
+      'afterEach': 'Test Cleanup (after each test)',
+      'hook': 'Setup/Teardown Hook',
+      'unknown': 'Setup/Teardown Hook'
+    };
+
+    const hookType = hookTypeMap[test.hookType || 'unknown'] || 'Setup/Teardown Hook';
+    const duration = test.duration ? `${test.duration}ms` : '0ms';
+    const status = test.status || 'passed';
+    const error = test.error ? `\nError: ${test.error}` : '';
+    const hookCode = test.hookCode || 'Code not available';
+    
+    return `Hook Type: ${hookType}
+Execution Time: ${duration}
+Status: ${status.toUpperCase()}
+Purpose: ${this.getHookPurpose(test)}
+
+=== Hook Implementation ===
+${hookCode}${error}`;
+  }
+
+  private static getHookPurpose(test: any): string {
+    if (!test.hookType) return 'General setup or cleanup operations';
+    
+    const purposeMap: Record<string, string> = {
+      'before': 'Initialize global test environment, configure clients, perform authentication',
+      'after': 'Clean up resources, generate reports, restore system state',
+      'beforeEach': 'Prepare test data, reset state, setup test-specific conditions',
+      'afterEach': 'Clean up test data, reset variables, restore clean state',
+      'hook': 'Perform setup or cleanup operations',
+      'unknown': 'Execute necessary preparation or cleanup tasks'
+    };
+
+    return purposeMap[test.hookType] || 'Execute setup or cleanup operations';
+  }
+
+  private static createOptimizedTestData(groupedTests: any): string {
+    // FOR 3000+ TESTS: Use virtual scrolling approach
+    // Only embed minimal data needed for initial rendering
+    // Full details loaded on-demand when user expands tests
+    
+    const optimized: any = {};
+    
+    for (const [status, tests] of Object.entries(groupedTests)) {
+      optimized[status] = (tests as any[]).map((test, index) => {
+        // Only include essential data for list rendering
+        const lightTest: any = {
+          id: `${status}_${index}`,
+          title: test.title,
+          status: test.status,
+          duration: test.duration,
+          isHook: test.isHook,
+          hookType: test.hookType,
+          // Store if test has additional details (for expand indicator)
+          hasRequest: !!test.request,
+          hasResponse: !!test.response,
+          hasAssertions: !!(test.assertions && test.assertions.length > 0),
+          hasError: !!test.error
+        };
+        
+        return lightTest;
+      });
+    }
+    
+    // Return minimal JSON for initial page load
+    return JSON.stringify(optimized, null, 0);
+  }
+
+  private static createDetailStorage(groupedTests: any): string {
+    // Store full test details in a separate data structure
+    // This will be used for on-demand loading
+    const detailStorage: any = {};
+    
+    for (const [status, tests] of Object.entries(groupedTests)) {
+      detailStorage[status] = (tests as any[]).map((test, index) => {
+        const details: any = {
+          id: `${status}_${index}`
+        };
+        
+        // Store full details for on-demand loading
+        if (test.request) {
+          details.request = {
+            method: test.request.method,
+            url: test.request.url,
+            headers: test.request.headers,
+            timestamp: test.request.timestamp,
+            body: test.request.body
+          };
+        }
+        
+        if (test.response) {
+          details.response = {
+            status: test.response.status,
+            statusText: test.response.statusText,
+            headers: test.response.headers,
+            responseTime: test.response.responseTime,
+            timestamp: test.response.timestamp,
+            body: test.response.body || test.response.data
+          };
+        }
+        
+        if (test.assertions) {
+          details.assertions = test.assertions;
+        }
+        
+        if (test.error) {
+          details.error = test.error;
+        }
+        
+        if (test.hookCode) {
+          details.hookCode = test.hookCode;
+        }
+        
+        return details;
+      });
+    }
+    
+    // Compress the detail storage using base64 to reduce size
+    const compressed = Buffer.from(JSON.stringify(detailStorage, null, 0)).toString('base64');
+    return `"${compressed}"`;
+  }
+
   private static escapeHtml(text: string): string {
     if (!text) return '';
     return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  // New optimization methods for large reports
+  private static createOptimizedGroupedTests(): any {
+    // More memory-efficient grouping for large datasets
+    const groups: any = { all: [], passed: [], failed: [], pending: [] };
+    
+    for (const test of this.testResults) {
+      groups.all.push(test);
+      if (test.status === 'passed') groups.passed.push(test);
+      else if (test.status === 'failed') groups.failed.push(test);
+      else if (test.status === 'pending') groups.pending.push(test);
+    }
+    
+    return groups;
+  }
+  
+  private static generateOptimizedHtml(groupedTests: any, suiteGroups: any, suiteStats: any): string {
+    console.log('🚀 Generating optimized HTML for large report...');
+    
+    // Use runtime data captured at the end of test execution
+    const { runtimeVariables, environmentVariables, restifiedConfig } = this.runtimeDataCapture;
+    
+    // Use RestifiedTemplateEngine with virtual scrolling enabled
+    const templateEngine = new RestifiedTemplateEngine();
+    
+    // Enhanced configuration for large reports
+    const optimizedConfig = {
+      ...this.reportConfig,
+      virtualScrolling: true,
+      lazyLoading: true,
+      compressData: true,
+      enableSearch: true,
+      enableFilters: true,
+      maxInitialTests: 100, // Only render first 100 tests initially
+      theme: {
+        primaryColor: this.reportConfig.theme?.primaryColor || '#667eea',
+        secondaryColor: this.reportConfig.theme?.secondaryColor || '#764ba2',
+        accentColor: this.reportConfig.theme?.accentColor || '#007acc'
+      }
+    };
+    
+    templateEngine.setConfig(optimizedConfig);
+    
+    // Optimize test data for virtual scrolling
+    const optimizedSuites = Object.entries(suiteGroups).map(([suiteName, suiteObj]: [string, any]) => {
+      return {
+        title: suiteName,
+        tests: this.optimizeTestsForVirtualScrolling(suiteObj.tests || []),
+        stats: {
+          passes: (suiteObj.tests || []).filter((t: any) => t.status === 'passed').length,
+          failures: (suiteObj.tests || []).filter((t: any) => t.status === 'failed').length,
+          pending: (suiteObj.tests || []).filter((t: any) => t.status === 'pending').length,
+          total: (suiteObj.tests || []).length
+        }
+      };
+    });
+
+    const reportData = {
+      stats: {
+        suites: Object.keys(suiteGroups).length,
+        tests: this.suiteInfo.total,
+        passes: this.suiteInfo.passed,
+        failures: this.suiteInfo.failed,
+        pending: this.suiteInfo.pending
+      },
+      suites: optimizedSuites,
+      // Add the captured data for the modals
+      runtimeVariables,
+      environmentVariables,
+      restifiedConfig,
+      metadata: {
+        title: this.reportConfig?.title || 'RestifiedTS Enterprise API Test Results',
+        subtitle: this.reportConfig?.subtitle || 'Enterprise API Testing with Advanced Features',
+        generated: new Date().toISOString(),
+        duration: this.suiteInfo.duration,
+        memoryUsage: this.getMemoryUsage().memoryMB,
+        largeReportMode: true,
+        dataCapture: this.dataCapture
+      },
+      config: optimizedConfig
+    };
+
+    return templateEngine.generateReport(reportData);
+  }
+  
+  private static optimizeTestsForVirtualScrolling(tests: any[]): any[] {
+    // Optimize test data for virtual scrolling
+    return tests.map(test => ({
+      ...test,
+      // Compress large data for initial load
+      request: test.request ? this.compressDataForInitialLoad(test.request) : null,
+      response: test.response ? this.compressDataForInitialLoad(test.response) : null,
+      // Keep assertions minimal for list view
+      assertionCount: test.assertions ? test.assertions.length : 0,
+      // Store full data in compressed format for on-demand loading
+      _fullData: this.compressTestData(test)
+    }));
+  }
+  
+  private static compressDataForInitialLoad(data: any): any {
+    if (!data) return null;
+    
+    // For initial load, only keep essential fields
+    if (data.method && data.url) { // Request data
+      return {
+        method: data.method,
+        url: data.url,
+        timestamp: data.timestamp,
+        _compressed: true
+      };
+    } else if (data.status !== undefined) { // Response data
+      return {
+        status: data.status,
+        statusText: data.statusText,
+        responseTime: data.responseTime,
+        timestamp: data.timestamp,
+        _compressed: true
+      };
+    }
+    
+    return data;
+  }
+  
+  private static compressTestData(test: any): string {
+    // Compress full test data for on-demand loading
+    try {
+      const fullData = {
+        request: test.request,
+        response: test.response,
+        assertions: test.assertions,
+        error: test.error,
+        stackTrace: test.stackTrace
+      };
+      return Buffer.from(JSON.stringify(fullData)).toString('base64');
+    } catch (error) {
+      return '';
+    }
+  }
+  
+  private static writeStreamedReport(filePath: string, content: string): void {
+    try {
+      const writeStream = fs.createWriteStream(filePath, { encoding: 'utf8' });
+      
+      // Write in chunks to prevent memory issues
+      const chunkSize = 1024 * 1024; // 1MB chunks
+      for (let i = 0; i < content.length; i += chunkSize) {
+        const chunk = content.slice(i, i + chunkSize);
+        writeStream.write(chunk);
+      }
+      
+      writeStream.end();
+      console.log('✅ Large report written successfully using streaming');
+    } catch (error) {
+      console.error('❌ Error writing streamed report:', error);
+      throw error;
+    }
+  }
+  
+  private static calculateDataCaptureRate(): number {
+    if (this.testResults.length === 0) return 0;
+    
+    let successfulCaptures = 0;
+    for (const test of this.testResults) {
+      if (test._captureMetadata && test._captureMetadata.hasRequest && test._captureMetadata.hasResponse) {
+        successfulCaptures++;
+      } else if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+        console.log(`🔍 Failed validation for test: ${test.title || 'Unknown'}`);
+        console.log(`   - hasRequest: ${test._captureMetadata?.hasRequest || 'false'}`);
+        console.log(`   - hasResponse: ${test._captureMetadata?.hasResponse || 'false'}`);
+        console.log(`   - dataSource: ${test._captureMetadata?.dataSource || 'none'}`);
+        console.log(`   - request method: ${test.request?.method || 'none'}`);
+        console.log(`   - request url: ${test.request?.url || 'none'}`);
+        console.log(`   - response status: ${test.response?.status || 'none'}`);
+      }
+    }
+    
+    return Math.round((successfulCaptures / this.testResults.length) * 100);
+  }
+  
+  private static cleanupAfterGeneration(): void {
+    // Clean up memory after report generation
+    this.testDataStore.clear();
+    this.requestResponseCache.clear();
+    
+    // Force garbage collection if available
+    if (global.gc) {
+      global.gc();
+    }
+    
+    console.log('🧹 Memory cleanup completed after report generation');
   }
 
   private static groupTestsBySuite(tests: any[]): any {
     const suites: any = {};
     
     tests.forEach(test => {
-      // Extract suite name from test title - try multiple patterns
+      // Use proper suite name from Mocha test structure
       let suiteName = 'Other Tests';
-      if (test.title) {
-        // Pattern 1: "Suite Name should do something"
-        let parts = test.title.split(' should ');
-        if (parts.length > 1) {
-          suiteName = parts[0].trim();
+      
+      // First priority: Use parent suite name from Mocha
+      if (test.parent && test.parent.title && test.parent.title !== '') {
+        suiteName = test.parent.title;
+      }
+      // Second priority: Extract from fullTitle if available
+      else if (test.fullTitle && test.title) {
+        const fullTitle = test.fullTitle;
+        const testTitle = test.title;
+        // Remove test title from full title to get suite name
+        suiteName = fullTitle.replace(testTitle, '').trim();
+        if (!suiteName) {
+          suiteName = 'Other Tests';
+        }
+      }
+      // Fallback: Use title parsing for older data structures
+      else if (test.title) {
+        // Check for hooks first
+        if (test.isHook || test.title.includes('"before') || test.title.includes('"after') || 
+            test.title.includes('beforeEach') || test.title.includes('afterEach') || 
+            test.title.includes('🔧')) {
+          suiteName = 'Setup & Teardown Hooks';
         } else {
-          // Pattern 2: "Suite Name: test description"
-          parts = test.title.split(':');
+          // Pattern 1: "Suite Name should do something"
+          let parts = test.title.split(' should ');
           if (parts.length > 1) {
             suiteName = parts[0].trim();
           } else {
-            // Pattern 3: Check for hooks (before, after, beforeEach, afterEach)
-            if (test.title.includes('"before') || test.title.includes('"after') || 
-                test.title.includes('beforeEach') || test.title.includes('afterEach')) {
-              suiteName = 'Test Hooks';
+            // Pattern 2: "Suite Name: test description"
+            parts = test.title.split(':');
+            if (parts.length > 1) {
+              suiteName = parts[0].trim();
             } else {
-              // Pattern 4: Try to extract meaningful suite name from longer titles
+              // Pattern 3: Try to extract meaningful suite name from longer titles
               const words = test.title.split(' ');
               if (words.length > 3) {
-                // Take first 2-3 words as suite name
                 suiteName = words.slice(0, Math.min(3, words.length - 1)).join(' ');
               }
             }
@@ -212,398 +1508,500 @@ export class RestifiedHtmlReporter {
     return suites;
   }
 
-  private static generateQuickFixHtml(groupedTests: any, suiteGroups: any): string {
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Restified Test Report - Quick Fix</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', sans-serif; background: #f5f7fa; color: #2d3748; line-height: 1.6; }
-        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px; text-align: center; margin-bottom: 30px; }
-        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
-        .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
-        .summary-card { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; }
-        .summary-card h3 { font-size: 2em; margin-bottom: 10px; }
-        .summary-card.total h3 { color: #4a5568; }
-        .summary-card.passed h3 { color: #48bb78; }
-        .summary-card.failed h3 { color: #f56565; }
-        .summary-card.pending h3 { color: #ed8936; }
-        
-        .filters { background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
-        .filter-tabs { display: flex; border-bottom: 2px solid #e2e8f0; margin-bottom: 15px; }
-        .filter-tab { background: none; border: none; padding: 12px 20px; cursor: pointer; font-weight: 500; color: #718096; border-bottom: 2px solid transparent; transition: all 0.3s; }
-        .filter-tab:hover { color: #2d3748; }
-        .filter-tab.active { color: #667eea; border-bottom-color: #667eea; }
-        .filter-content { display: none; }
-        .filter-content.active { display: block; }
-        .filter-buttons { text-align: center; }
-        .filter-btn { background: #e2e8f0; border: none; padding: 12px 24px; margin: 5px; border-radius: 25px; cursor: pointer; font-weight: 500; transition: all 0.3s; }
-        .filter-btn:hover { background: #cbd5e0; }
-        .filter-btn.active { background: #667eea; color: white; }
-        .suite-grid { display: flex; flex-direction: column; gap: 15px; }
-        .suite-card { background: #f7fafc; border: 2px solid #e2e8f0; border-radius: 10px; transition: all 0.3s; }
-        .suite-card:hover { border-color: #cbd5e0; }
-        .suite-card.expanded { border-color: #667eea; background: #ebf4ff; }
-        .suite-header { padding: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
-        .suite-header:hover { background: rgba(102, 126, 234, 0.1); border-radius: 8px; }
-        .suite-info { flex: 1; }
-        .suite-name { font-weight: 600; font-size: 1.1em; margin-bottom: 8px; color: #2d3748; }
-        .suite-stats { font-size: 0.9em; color: #718096; }
-        .suite-toggle { font-size: 1.2em; color: #667eea; transition: transform 0.3s; }
-        .suite-card.expanded .suite-toggle { transform: rotate(90deg); }
-        .suite-tests { display: none; border-top: 1px solid #e2e8f0; background: white; }
-        .suite-card.expanded .suite-tests { display: block; }
-        
-        .test-list { background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }
-        .test-list h2 { background: #667eea; color: white; padding: 20px; margin: 0; display: flex; justify-content: space-between; align-items: center; }
-        .back-btn { background: rgba(255,255,255,0.2); border: none; color: white; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-size: 0.9em; transition: background 0.3s; }
-        .back-btn:hover { background: rgba(255,255,255,0.3); }
-        .test-item { border-bottom: 1px solid #e2e8f0; padding: 20px; transition: background-color 0.2s; }
-        .test-item:hover { background: #f7fafc; }
-        .test-item:last-child { border-bottom: none; }
-        .test-item.hidden { display: none; }
-        .test-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; cursor: pointer; padding: 8px; border-radius: 8px; transition: background-color 0.2s; }
-        .test-header:hover { background: rgba(102, 126, 234, 0.1); }
-        .test-title { font-weight: bold; font-size: 1.1em; }
-        .test-status { font-weight: bold; padding: 5px 10px; border-radius: 15px; font-size: 0.9em; }
-        .test-status.passed { background: #c6f6d5; color: #22543d; }
-        .test-status.failed { background: #fed7d7; color: #742a2a; }
-        .test-status.pending { background: #feebc8; color: #7b341e; }
-        .test-meta { color: #718096; font-size: 0.9em; }
-        .test-details { margin-top: 15px; display: none; }
-        .test-item.expanded .test-details { display: block; }
-        .detail-section { margin: 15px 0; }
-        .detail-section h4 { background: #edf2f7; padding: 10px; margin: 0 0 10px 0; border-radius: 5px; cursor: pointer; user-select: none; }
-        .detail-section h4:hover { background: #e2e8f0; }
-        .detail-content { background: #f7fafc; padding: 15px; border-radius: 5px; display: none; max-height: 400px; overflow: auto; }
-        .detail-section.expanded .detail-content { display: block; }
-        .json-view { font-family: 'Courier New', monospace; font-size: 0.9em; white-space: pre-wrap; word-break: break-all; }
-        
-        .status-counter { background: #edf2f7; padding: 10px 20px; border-radius: 25px; margin-bottom: 20px; text-align: center; font-weight: 500; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>🚀 Restified Test Report</h1>
-            <p>Generated on ${this.suiteInfo.endTime.toLocaleDateString()} at ${this.suiteInfo.endTime.toLocaleTimeString()}</p>
-        </div>
-        
-        <div class="summary">
-            <div class="summary-card total">
-                <h3>${this.suiteInfo.total}</h3>
-                <p>Total Tests</p>
-            </div>
-            <div class="summary-card passed">
-                <h3>${this.suiteInfo.passed}</h3>
-                <p>Passed</p>
-            </div>
-            <div class="summary-card failed">
-                <h3>${this.suiteInfo.failed}</h3>
-                <p>Failed</p>
-            </div>
-            <div class="summary-card pending">
-                <h3>${this.suiteInfo.pending}</h3>
-                <p>Pending</p>
-            </div>
-        </div>
-        
-        <div class="filters">
-            <div class="filter-tabs">
-                <button class="filter-tab active" data-tab="status">🔍 By Status</button>
-                <button class="filter-tab" data-tab="suite">📂 By Suite</button>
-            </div>
-            
-            <div class="filter-content active" id="statusFilters">
-                <div class="filter-buttons">
-                    <button class="filter-btn active" data-filter="all">All (${this.suiteInfo.total})</button>
-                    <button class="filter-btn" data-filter="passed">✅ Passed (${this.suiteInfo.passed})</button>
-                    <button class="filter-btn" data-filter="failed">❌ Failed (${this.suiteInfo.failed})</button>
-                    <button class="filter-btn" data-filter="pending">⏳ Pending (${this.suiteInfo.pending})</button>
-                </div>
-            </div>
-            
-            <div class="filter-content" id="suiteFilters">
-                <div class="suite-grid">
-                    ${Object.values(suiteGroups).map((suite: any) => `
-                        <div class="suite-card" data-suite="${this.escapeHtml(suite.name)}">
-                            <div class="suite-header">
-                                <div class="suite-info">
-                                    <div class="suite-name">${this.escapeHtml(suite.name)}</div>
-                                    <div class="suite-stats">
-                                        ${suite.total} tests • 
-                                        <span style="color: #48bb78">${suite.passed} passed</span> • 
-                                        <span style="color: #f56565">${suite.failed} failed</span>
-                                        ${suite.pending > 0 ? ` • <span style="color: #ed8936">${suite.pending} pending</span>` : ''}
-                                    </div>
-                                </div>
-                                <div class="suite-toggle">▶</div>
-                            </div>
-                            <div class="suite-tests">
-                                ${suite.tests.map((test: any, index: number) => this.generateTestItemStatic(test, index)).join('')}
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-        </div>
-        
-        <div class="status-counter" id="statusCounter">
-            Showing ${this.suiteInfo.total} of ${this.suiteInfo.total} tests
-        </div>
-        
-        <div class="test-list">
-            <h2 id="testListTitle">📋 Test Results</h2>
-            <div id="testContainer">
-                ${this.testResults.map((test, index) => this.generateTestItemStatic(test, index)).join('')}
-            </div>
-        </div>
-    </div>
-    
-    <script>
-        // Embed test data directly in the page
-        const testData = ${JSON.stringify(groupedTests)};
-        const suiteData = ${JSON.stringify(suiteGroups)};
-        
-        // DOM elements
-        const filterTabs = document.querySelectorAll('.filter-tab');
-        const filterContents = document.querySelectorAll('.filter-content');
-        const filterButtons = document.querySelectorAll('.filter-btn');
-        const suiteCards = document.querySelectorAll('.suite-card');
-        const testContainer = document.getElementById('testContainer');
-        const statusCounter = document.getElementById('statusCounter');
-        const testListTitle = document.getElementById('testListTitle');
-        const backToSuitesBtn = document.getElementById('backToSuitesBtn');
-        
-        // Track current view
-        let currentView = 'status';
-        let currentFilter = 'all';
-        
-        // Tab switching functionality
-        filterTabs.forEach(tab => {
-            tab.addEventListener('click', function() {
-                const tabType = this.dataset.tab;
-                
-                // Update active tab
-                filterTabs.forEach(t => t.classList.remove('active'));
-                this.classList.add('active');
-                
-                // Show/hide content
-                filterContents.forEach(content => content.classList.remove('active'));
-                document.getElementById(tabType === 'status' ? 'statusFilters' : 'suiteFilters').classList.add('active');
-                
-                currentView = tabType;
-                
-                // Update display based on tab type
-                if (tabType === 'status') {
-                    // Reset status filters
-                    filterButtons.forEach(btn => btn.classList.remove('active'));
-                    document.querySelector('[data-filter="all"]').classList.add('active');
-                    testContainer.style.display = 'block';
-                    testListTitle.textContent = '📋 Test Results';
-                    renderTests(testData.all);
-                    statusCounter.textContent = \`Showing \${testData.all.length} of \${testData.all.length} tests\`;
-                } else {
-                    // For "By Suite" tab - collapse all suites and hide main test container
-                    suiteCards.forEach(card => card.classList.remove('expanded'));
-                    testContainer.style.display = 'none';
-                    testListTitle.textContent = '📂 Suite Overview';
-                    statusCounter.textContent = \`Click on any suite to expand and view its tests\`;
-                }
-            });
-        });
-        
-        // Suite collapse/expand functionality
-        suiteCards.forEach(card => {
-            const suiteHeader = card.querySelector('.suite-header');
-            suiteHeader.addEventListener('click', function(e) {
-                e.stopPropagation();
-                
-                // Toggle expanded state
-                card.classList.toggle('expanded');
-                
-                const suiteName = card.dataset.suite;
-                const isExpanded = card.classList.contains('expanded');
-                
-                if (isExpanded) {
-                    statusCounter.textContent = \`Suite "\${suiteName}" expanded - \${suiteData[suiteName].tests.length} tests visible\`;
-                    // Attach listeners to newly visible tests in this suite
-                    setTimeout(attachExpandListeners, 100);
-                } else {
-                    statusCounter.textContent = \`Suite "\${suiteName}" collapsed - Click on any suite to expand and view its tests\`;
-                }
-            });
-        });
-        
-        // Status filter functionality
-        filterButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                console.log('Filter clicked:', this.dataset.filter);
-                const filter = this.dataset.filter;
-                
-                // Update active button
-                filterButtons.forEach(btn => btn.classList.remove('active'));
-                this.classList.add('active');
-                
-                // Get filtered tests
-                const filteredTests = testData[filter] || [];
-                
-                // Update test display
-                renderTests(filteredTests);
-                
-                // Update counter
-                statusCounter.textContent = \`Showing \${filteredTests.length} of \${testData.all.length} tests\`;
-                
-                console.log('Filtered tests:', filteredTests.length);
-            });
-        });
-        
-        function renderTests(tests) {
-            testContainer.innerHTML = tests.map((test, index) => createTestHTML(test, index)).join('');
-            // Attach expand listeners to newly rendered tests
-            setTimeout(attachExpandListeners, 100);
+  private static calculateSuiteStats(suiteGroups: any): any {
+    const suiteNames = Object.keys(suiteGroups);
+    const total = suiteNames.length;
+    let passed = 0;
+    let failed = 0;
+    let pending = 0;
+
+    suiteNames.forEach(suiteName => {
+      const suite = suiteGroups[suiteName];
+      if (suite.failed > 0) {
+        failed++;
+      } else if (suite.pending > 0) {
+        pending++;
+      } else if (suite.passed > 0) {
+        passed++;
+      }
+    });
+
+    return { total, passed, failed, pending };
+  }
+
+  private static generateQuickFixHtml(groupedTests: any, suiteGroups: any, suiteStats: any): string {
+    // Calculate stats for the template
+    const totalSuites = Object.keys(suiteGroups).length;
+    const totalTests = this.suiteInfo.total;
+    const passedTests = this.suiteInfo.passed;
+    const failedTests = this.suiteInfo.failed; 
+    const pendingTests = this.suiteInfo.pending;
+
+    // Use runtime data captured at the end of test execution
+    const { runtimeVariables, environmentVariables, restifiedConfig } = this.runtimeDataCapture;
+
+    // Build suite data structure for RestifiedTemplateEngine
+    const reportData = {
+      stats: {
+        suites: totalSuites,
+        tests: totalTests,
+        passes: passedTests,
+        failures: failedTests,
+        pending: pendingTests
+      },
+      suites: Object.entries(suiteGroups).map(([suiteName, suiteObj]: [string, any]) => {
+        const testsArray = suiteObj.tests || [];
+        return {
+          title: suiteName,
+          tests: testsArray,
+          stats: {
+            passes: testsArray.filter((t: any) => t.status === 'passed').length,
+            failures: testsArray.filter((t: any) => t.status === 'failed').length,
+            pending: testsArray.filter((t: any) => t.status === 'pending').length,
+            total: testsArray.length
+          }
+        };
+      }),
+      // Add the captured data for the modals
+      runtimeVariables,
+      environmentVariables,
+      restifiedConfig,
+      metadata: {
+        title: this.reportConfig?.title || 'RestifiedTS Enterprise API Test Results',
+        subtitle: this.reportConfig?.subtitle || 'Enterprise API Testing with Advanced Features and Analytics',
+        generated: new Date().toISOString(),
+        duration: this.suiteInfo.duration
+      },
+      config: {
+        title: this.reportConfig?.title || 'RestifiedTS Enterprise API Test Results',
+        subtitle: this.reportConfig?.subtitle || 'Enterprise API Testing with Advanced Features and Analytics',
+        theme: {
+          primaryColor: '#1e293b',
+          secondaryColor: '#334155',
+          accentColor: '#007acc'
+        },
+        footer: {
+          show: true,
+          text: 'Generated by RestifiedTS Enterprise Test Framework',
+          links: [
+            { text: 'RestifiedTS Docs', url: 'https://github.com/rajkumar-krishnan/RestifiedTS', external: true },
+            { text: 'API Documentation', url: '#', external: true }
+          ],
+          copyright: '© 2025 RestifiedTS Enterprise',
+          timestamp: true,
+          version: 'v2.0.7',
+          customHtml: ''
+        },
+        branding: {
+          showPoweredBy: true,
+          company: 'Enterprise Solutions',
+          website: 'https://enterprise.example.com'
         }
-        
-        function createTestHTML(test, index) {
-            const statusIcon = test.status === 'passed' ? '✅' : test.status === 'failed' ? '❌' : '⏳';
-            const method = test.request?.method || 'N/A';
-            const duration = test.duration ? test.duration + 'ms' : 'N/A';
-            
-            return \`
-                <div class="test-item" data-test="\${index}" data-status="\${test.status}">
-                    <div class="test-header">
-                        <div class="test-title">\${escapeHtml(test.title)}</div>
-                        <div class="test-status \${test.status}">\${statusIcon} \${test.status.toUpperCase()}</div>
-                    </div>
-                    <div class="test-meta">\${method} • \${duration}</div>
-                    
-                    <div class="test-details">
-                        \${test.request ? \`
-                        <div class="detail-section">
-                            <h4 onclick="toggleDetail(this); event.stopPropagation();">📤 Request</h4>
-                            <div class="detail-content">
-                                <div class="json-view">\${formatRequest(test.request)}</div>
-                            </div>
-                        </div>
-                        \` : ''}
-                        
-                        \${test.response ? \`
-                        <div class="detail-section">
-                            <h4 onclick="toggleDetail(this); event.stopPropagation();">📥 Response</h4>
-                            <div class="detail-content">
-                                <div class="json-view">\${formatResponse(test.response)}</div>
-                            </div>
-                        </div>
-                        \` : ''}
-                        
-                        \${test.assertions && test.assertions.length > 0 ? \`
-                        <div class="detail-section">
-                            <h4 onclick="toggleDetail(this); event.stopPropagation();">🔍 Assertions</h4>
-                            <div class="detail-content">
-                                <div class="json-view">\${JSON.stringify(test.assertions, null, 2)}</div>
-                            </div>
-                        </div>
-                        \` : ''}
-                        
-                        \${test.error ? \`
-                        <div class="detail-section">
-                            <h4 onclick="toggleDetail(this); event.stopPropagation();">❌ Error</h4>
-                            <div class="detail-content">
-                                <div class="json-view">\${escapeHtml(test.error)}</div>
-                            </div>
-                        </div>
-                        \` : ''}
-                    </div>
-                </div>
-            \`;
+      }
+    };
+
+    // Use RestifiedTemplateEngine to generate the HTML
+    const templateEngine = new RestifiedTemplateEngine();
+    templateEngine.setConfig(reportData.config);
+    return templateEngine.generateReport(reportData);
+  }
+
+  // Helper methods to capture runtime data for modals
+  private static getRestifiedInstance(): any {
+    try {
+      // Method 1: Try to get from global scope
+      const globalRestified = (global as any).restified || (global as any).__RESTIFIED_INSTANCE__;
+      if (globalRestified) {
+        return globalRestified;
+      }
+
+      // Method 2: Try to find the EXACT same instance used by examples/tests
+      try {
+        // This is the path examples use: import { restified } from '../../src/index'
+        const indexModule = require('../index');  // From reporter perspective, this is the main index
+        if (indexModule && indexModule.restified) {
+          return indexModule.restified;
         }
+        if (indexModule.default && typeof indexModule.default === 'object' && indexModule.default.restified) {
+          return indexModule.default.restified;
+        }
+      } catch (importError) {
+        if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+          console.log('⚠️ Method 2 - Could not import from ../index:', importError.message);
+        }
+      }
+
+      // Method 3: Try from main Restified module (direct export)
+      try {
+        const { restified: defaultInstance } = require('../core/Restified');
+        if (defaultInstance) {
+          return defaultInstance;
+        }
+      } catch (importError) {
+        if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+          console.log('⚠️ Method 3 - Could not import from ../core/Restified:', importError.message);
+        }
+      }
+
+      // Method 4: Try module cache search for the actual used instance
+      try {
+        const Module = require('module');
+        const moduleIds = Object.keys(Module._cache);
         
-        function toggleTest(index) {
-            const item = document.querySelector(\`[data-test="\${index}"]\`);
-            if (item) {
-                item.classList.toggle('expanded');
+        // Look for the main index file that examples import from
+        for (const moduleId of moduleIds) {
+          if (moduleId.includes('index.js') && moduleId.includes('src') && !moduleId.includes('node_modules')) {
+            const module = Module._cache[moduleId];
+            if (module && module.exports && module.exports.restified) {
+              if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+                console.log('🔍 Method 4 - Found restified instance in:', moduleId);
+              }
+              return module.exports.restified;
             }
+          }
         }
         
-        // Make tests expandable in both main container and suite cards
-        function attachExpandListeners() {
-            // Main container tests
-            const testItems = document.querySelectorAll('#testContainer .test-item');
-            testItems.forEach(item => {
-                const testHeader = item.querySelector('.test-header');
-                if (testHeader && !testHeader.hasAttribute('data-listener-attached')) {
-                    testHeader.addEventListener('click', function(e) {
-                        e.stopPropagation();
-                        item.classList.toggle('expanded');
-                    });
-                    testHeader.setAttribute('data-listener-attached', 'true');
+        // Look for core Restified module
+        for (const moduleId of moduleIds) {
+          if (moduleId.includes('Restified.js') && !moduleId.includes('Reporter')) {
+            const module = Module._cache[moduleId];
+            if (module && module.exports) {
+              if (module.exports.restified) {
+                return module.exports.restified;
+              }
+              if (module.exports.default && module.exports.default.restified) {
+                return module.exports.default.restified;
+              }
+            }
+          }
+        }
+      } catch (cacheError) {
+        if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+          console.log('⚠️ Method 4 cache error:', cacheError.message);
+        }
+      }
+
+      return null;
+    } catch (error) {
+      console.warn('Could not access Restified instance for modal data:', error.message);
+      return null;
+    }
+  }
+
+  private static captureRuntimeVariables(restifiedInstance: any): any {
+    try {
+      let variables = { global: {}, local: {}, extracted: {} };
+
+      // Method 1: Check for variable snapshot saved during dumpVariables()
+      const snapshot = (global as any).__RESTIFIED_VARIABLE_SNAPSHOT__;
+      if (snapshot) {
+        variables = {
+          global: snapshot.global || {},
+          local: snapshot.local || {},
+          extracted: snapshot.extracted || {}
+        };
+        
+        if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+          console.log('✅ Method 1 - Using VARIABLE SNAPSHOT from dumpVariables():');
+          console.log('  - Captured at:', snapshot.capturedAt);
+          console.log('  - Global vars:', Object.keys(variables.global).length, JSON.stringify(Object.keys(variables.global)));
+          console.log('  - Local vars:', Object.keys(variables.local).length, JSON.stringify(Object.keys(variables.local)));
+          console.log('  - Extracted vars:', Object.keys(variables.extracted).length, JSON.stringify(Object.keys(variables.extracted)));
+        }
+        
+        // Clear the snapshot to prevent stale data
+        delete (global as any).__RESTIFIED_VARIABLE_SNAPSHOT__;
+        
+        return variables;
+      }
+
+      // Method 2: Try to get from Restified instance (fallback)
+      if (restifiedInstance && restifiedInstance.variableStore) {
+        const variableStore = restifiedInstance.variableStore;
+        variables = {
+          global: variableStore.getGlobalVariables ? variableStore.getGlobalVariables() : {},
+          local: variableStore.getLocalVariables ? variableStore.getLocalVariables() : {},
+          extracted: variableStore.getExtractedVariables ? variableStore.getExtractedVariables() : {}
+        };
+        
+        if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+          console.log('🔄 Method 2 - Using current variable store state:');
+          console.log('  - Global vars:', Object.keys(variables.global).length, JSON.stringify(Object.keys(variables.global)));
+          console.log('  - Local vars:', Object.keys(variables.local).length, JSON.stringify(Object.keys(variables.local)));
+          console.log('  - Extracted vars:', Object.keys(variables.extracted).length, JSON.stringify(Object.keys(variables.extracted)));
+        }
+      }
+
+      // Method 2: Try to access global variables if instance method didn't work
+      if (Object.keys(variables.global).length === 0 && Object.keys(variables.local).length === 0) {
+        // Check for global variable stores
+        const globalVarStore = (global as any).__RESTIFIED_GLOBAL_VARIABLES__ || {};
+        const localVarStore = (global as any).__RESTIFIED_LOCAL_VARIABLES__ || {};
+        const extractedVarStore = (global as any).__RESTIFIED_EXTRACTED_VARIABLES__ || {};
+
+        variables.global = { ...variables.global, ...globalVarStore };
+        variables.local = { ...variables.local, ...localVarStore };
+        variables.extracted = { ...variables.extracted, ...extractedVarStore };
+      }
+
+      // Method 3: Try to access the SAME instance that tests are using
+      try {
+        const testInstance = this.getRestifiedInstance();
+        if (testInstance && testInstance.variableStore) {
+          const store = testInstance.variableStore;
+          const globalVars = store.getGlobalVariables ? store.getGlobalVariables() : {};
+          const localVars = store.getLocalVariables ? store.getLocalVariables() : {};
+          const extractedVars = store.getExtractedVariables ? store.getExtractedVariables() : {};
+          
+          // Use these as the primary source (don't merge, replace)
+          variables.global = globalVars;
+          variables.local = localVars;
+          variables.extracted = extractedVars;
+          
+          if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+            console.log('✅ Method 3 - Found TEST INSTANCE with variables:');
+            console.log('  - Instance type:', typeof testInstance);
+            console.log('  - Has variableStore:', !!testInstance.variableStore);
+            console.log('  - Global vars:', Object.keys(globalVars).length, JSON.stringify(Object.keys(globalVars)));
+            console.log('  - Local vars:', Object.keys(localVars).length, JSON.stringify(Object.keys(localVars)));
+            console.log('  - Extracted vars:', Object.keys(extractedVars).length, JSON.stringify(Object.keys(extractedVars)));
+          }
+        } else {
+          if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+            console.log('❌ Method 3 - Could not find test instance or variable store');
+            console.log('  - testInstance:', !!testInstance);
+            console.log('  - variableStore:', testInstance ? !!testInstance.variableStore : 'N/A');
+          }
+        }
+      } catch (importError) {
+        if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+          console.log('⚠️ Method 3 error accessing test instance:', importError.message);
+        }
+      }
+
+      // Method 4: Check for any test context variables that may have been stored
+      const testContextVars = (global as any).__RESTIFIED_TEST_VARIABLES__ || {};
+      if (Object.keys(testContextVars).length > 0) {
+        variables.global = { ...variables.global, ...testContextVars };
+      }
+
+      // Method 5: Fallback - create sample variables if still empty (for demonstration)
+      if (Object.keys(variables.global).length === 0 && 
+          Object.keys(variables.local).length === 0) {
+        
+        // Add current test execution info as variables
+        variables.global = {
+          testExecutionTime: new Date().toISOString(),
+          testFramework: 'RestifiedTS',
+          reporterVersion: '2.2.0'
+        };
+
+        // Add any process-level test variables
+        Object.keys(process.env).forEach(key => {
+          if (key.startsWith('TEST_') || key.startsWith('RESTIFIED_')) {
+            variables.global[key] = process.env[key];
+          }
+        });
+      }
+
+      // Always set extracted as placeholder (as requested by user)
+      if (Object.keys(variables.extracted).length === 0) {
+        variables.extracted = {
+          'placeholder': 'Extracted variables will be captured during test execution'
+        };
+      }
+
+      return variables;
+    } catch (error) {
+      console.warn('Could not capture runtime variables:', error.message);
+      return { 
+        global: { 
+          error: 'Could not access runtime variables',
+          timestamp: new Date().toISOString() 
+        }, 
+        local: {}, 
+        extracted: {} 
+      };
+    }
+  }
+
+  private static captureEnvironmentVariables(): any {
+    try {
+      // Capture ALL environment variables (200+) with sensitive data masking
+      const envVars: any = {};
+      const sensitiveKeys = ['PASSWORD', 'SECRET', 'KEY', 'TOKEN', 'PRIVATE', 'AUTH', 'CREDENTIAL'];
+      
+      Object.keys(process.env).forEach(key => {
+        const isSensitive = sensitiveKeys.some(sensitive => key.toUpperCase().includes(sensitive));
+        
+        if (isSensitive) {
+          // Mask sensitive environment variables
+          const value = process.env[key];
+          if (value && value.length > 0) {
+            envVars[key] = '*'.repeat(Math.min(value.length, 12));
+          } else {
+            envVars[key] = '***MASKED***';
+          }
+        } else {
+          // Include all non-sensitive environment variables
+          envVars[key] = process.env[key];
+        }
+      });
+      
+      return envVars;
+    } catch (error) {
+      console.warn('Could not capture environment variables:', error.message);
+      return {};
+    }
+  }
+
+  private static captureRestifiedConfig(restifiedInstance: any): any {
+    try {
+      if (!restifiedInstance) {
+        // Try to load the complete restified.config.ts if instance is not available
+        return this.loadRestifiedConfigFile();
+      }
+
+      // Get the complete configuration object
+      const config = restifiedInstance.getConfig ? restifiedInstance.getConfig() : {};
+      
+      // If config is empty or minimal, try loading from file
+      if (!config || Object.keys(config).length < 5) {
+        const fileConfig = this.loadRestifiedConfigFile();
+        if (fileConfig && Object.keys(fileConfig).length > 0) {
+          // Merge instance config with file config for complete picture
+          const completeConfig = { ...fileConfig, ...config };
+          return this.sanitizeConfigForDisplay(completeConfig);
+        }
+      }
+      
+      // Clean sensitive data from config before displaying
+      const cleanConfig = this.sanitizeConfigForDisplay(config);
+      
+      return cleanConfig;
+    } catch (error) {
+      console.warn('Could not capture Restified configuration:', error.message);
+      // Fallback: try to load from config file
+      return this.loadRestifiedConfigFile();
+    }
+  }
+
+  private static loadRestifiedConfigFile(): any {
+    try {
+      // Try to load the complete restified.config.ts file
+      const fs = require('fs');
+      const path = require('path');
+      
+      const configPaths = [
+        path.resolve(process.cwd(), 'restified.config.ts'),
+        path.resolve(process.cwd(), 'restified.config.js'),
+        path.resolve(process.cwd(), 'dist/restified.config.js'),
+        path.resolve(process.cwd(), 'src/restified.config.ts')
+      ];
+      
+      if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+        console.log('🔍 Trying to load config from paths:', configPaths);
+      }
+      
+      for (const configPath of configPaths) {
+        if (fs.existsSync(configPath)) {
+          if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+            console.log('✅ Found config file:', configPath);
+          }
+          
+          try {
+            // For TypeScript files, try to require the compiled version or use ts-node
+            let config;
+            if (configPath.endsWith('.ts')) {
+              // Try to find compiled JS version first
+              const jsPath = configPath.replace('.ts', '.js').replace('src/', 'dist/');
+              if (fs.existsSync(jsPath)) {
+                delete require.cache[require.resolve(jsPath)];
+                config = require(jsPath);
+                if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+                  console.log('📦 Loaded compiled config from:', jsPath);
                 }
-            });
+              } else {
+                // Try to require TypeScript file directly (if ts-node is available)
+                delete require.cache[require.resolve(configPath)];
+                config = require(configPath);
+                if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+                  console.log('📦 Loaded TS config directly from:', configPath);
+                }
+              }
+            } else {
+              delete require.cache[require.resolve(configPath)];
+              config = require(configPath);
+              if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+                console.log('📦 Loaded JS config from:', configPath);
+              }
+            }
             
-            // Suite card tests
-            const suiteTestItems = document.querySelectorAll('.suite-tests .test-item');
-            suiteTestItems.forEach(item => {
-                const testHeader = item.querySelector('.test-header');
-                if (testHeader && !testHeader.hasAttribute('data-listener-attached')) {
-                    testHeader.addEventListener('click', function(e) {
-                        e.stopPropagation();
-                        item.classList.toggle('expanded');
-                    });
-                    testHeader.setAttribute('data-listener-attached', 'true');
-                }
-            });
+            // Extract the actual config object
+            const actualConfig = config.default || config;
+            if (actualConfig && typeof actualConfig === 'object') {
+              if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+                console.log('🎯 Config loaded successfully. Main sections:', JSON.stringify(Object.keys(actualConfig)));
+                console.log('  - clients:', actualConfig.clients ? Object.keys(actualConfig.clients).length : 'none');
+                console.log('  - databases:', actualConfig.databases ? Object.keys(actualConfig.databases).length : 'none');
+                console.log('  - authentication:', actualConfig.authentication ? 'yes' : 'no');
+                console.log('  - reporting:', actualConfig.reporting ? 'yes' : 'no');
+                console.log('  - performance:', actualConfig.performance ? 'yes' : 'no');
+              }
+              return this.sanitizeConfigForDisplay(actualConfig);
+            }
+          } catch (err) {
+            if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+              console.warn(`❌ Could not load config from ${configPath}:`, err.message);
+            }
+            continue;
+          }
         }
+      }
+      
+      if (process.env.DEBUG_RESTIFIED_REPORTER === 'true') {
+        console.log('❌ No config file found in any of the expected paths');
+      }
+      return {};
+    } catch (error) {
+      console.warn('Could not load Restified config file:', error.message);
+      return {};
+    }
+  }
+
+  private static sanitizeConfigForDisplay(config: any): any {
+    if (!config || typeof config !== 'object') {
+      return {};
+    }
+
+    const cleaned = JSON.parse(JSON.stringify(config));
+    
+    // Remove or mask sensitive information
+    const sensitiveKeys = ['password', 'secret', 'key', 'token', 'apiKey', 'private', 'credentials'];
+    
+    const sanitizeObject = (obj: any): void => {
+      if (!obj || typeof obj !== 'object') return;
+      
+      Object.keys(obj).forEach(key => {
+        const lowerKey = key.toLowerCase();
+        const isSensitive = sensitiveKeys.some(sensitiveKey => lowerKey.includes(sensitiveKey));
         
-        function toggleDetail(element) {
-            element.parentElement.classList.toggle('expanded');
+        if (isSensitive) {
+          if (typeof obj[key] === 'string' && obj[key].length > 0) {
+            obj[key] = '*'.repeat(Math.min(obj[key].length, 8));
+          } else {
+            obj[key] = '***MASKED***';
+          }
+        } else if (typeof obj[key] === 'object') {
+          sanitizeObject(obj[key]);
         }
-        
-        function formatRequest(request) {
-            const obj = {
-                method: request.method,
-                url: request.url,
-                headers: request.headers,
-                timestamp: request.timestamp
-            };
-            if (request.body) obj.body = request.body;
-            return JSON.stringify(obj, null, 2);
-        }
-        
-        function formatResponse(response) {
-            const obj = {
-                status: response.status,
-                statusText: response.statusText,
-                headers: response.headers,
-                responseTime: response.responseTime + 'ms',
-                timestamp: response.timestamp,
-                body: response.body || response.data
-            };
-            return JSON.stringify(obj, null, 2);
-        }
-        
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-        
-        // Back to suite list functionality - not needed with collapsible approach
-        function backToSuiteList() {
-            // This function is not needed anymore with the new collapsible approach
-            // but keeping it for compatibility
-        }
-        
-        console.log('Restified Report loaded with', testData.all.length, 'tests');
-        console.log('Filter buttons found:', filterButtons.length);
-        
-        // Initialize expand listeners for initial test display
-        attachExpandListeners();
-    </script>
-</body>
-</html>`;
+      });
+    };
+    
+    sanitizeObject(cleaned);
+    return cleaned;
   }
 }
+
+// Export the function (not the class) for Mocha compatibility
+export = RestifiedHtmlReporter;

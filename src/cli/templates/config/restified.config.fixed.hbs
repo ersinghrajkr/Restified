@@ -1,0 +1,114 @@
+/**
+ * 🏢 ENTERPRISE RESTIFIED CONFIGURATION
+ * 
+ * This configuration file provides enterprise-grade API testing capabilities
+ * with support for:
+ * - Multi-environment deployment
+ * - Role-based access control
+ * - Comprehensive logging and reporting
+ * - Database integration and validation
+ * - Performance and security testing
+ * - Multi-client microservices architecture
+ */
+
+import { RestifiedConfig } from 'restifiedts';
+
+const config: RestifiedConfig = {
+  // 🌍 Environment Configuration
+  environment: process.env.TEST_ENV || 'development',
+  
+  // 🏗️ Multi-Client Enterprise Architecture
+  clients: {
+    // Primary API Gateway
+    api: {
+      baseURL: process.env.API_GATEWAY_URL || '{{baseUrl}}',
+      timeout: parseInt(process.env.API_TIMEOUT || '10000'),
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': '{{sanitizedName}}-test-suite/1.0.0'
+      }
+    },
+
+    // Authentication Service
+    auth: {
+      baseURL: process.env.AUTH_SERVICE_URL || '{{baseUrl}}/auth',
+      timeout: parseInt(process.env.AUTH_TIMEOUT || '5000'),
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
+    }
+  },
+
+  // 🔐 Authentication Configuration (Enterprise SSO/OAuth2)
+  authentication: {
+    type: 'oauth2',
+    endpoint: process.env.AUTH_ENDPOINT || '/oauth/token',
+    credentials: {
+      clientId: process.env.CLIENT_ID || 'test-client',
+      clientSecret: process.env.CLIENT_SECRET || 'test-secret',
+      username: process.env.TEST_USERNAME || 'test@example.com',
+      password: process.env.TEST_PASSWORD || 'password123'
+    },
+    autoApplyToClients: 'all',
+    extractors: {
+      token: '$.access_token',
+      refreshToken: '$.refresh_token',
+      expiresIn: '$.expires_in',
+      tokenType: '$.token_type',
+      scope: '$.scope',
+      userId: '$.user_id',
+      roles: '$.roles'
+    },
+    tokenStorage: {
+      type: 'memory',
+      prefix: 'restified_token_'
+    }
+  },
+
+  // 📊 Enterprise Reporting and Analytics
+  reporting: {
+    formats: ['html', 'json', 'junit', 'allure'],
+    outputDir: process.env.REPORT_OUTPUT_DIR || 'reports',
+    filename: process.env.REPORT_FILENAME || 'restified-html-report.html',
+    includeRequestResponse: true,
+    includeTimings: true,
+    includeSystemInfo: true,
+    enterprise: {
+      complianceReporting: true,
+      performanceMetrics: true,
+      securityAudit: true,
+      dataRetention: '90d'
+    }
+  },
+
+  // 🏭 Load Testing and Performance
+  performance: {
+    defaultScenarios: ['smoke', 'load', 'stress'],
+    thresholds: {
+      http_req_duration: 'p(95)<2000',
+      http_req_failed: 'rate<0.1'
+    }
+  },
+
+  // 🔒 Security Configuration  
+  security: {
+    zapConfig: {
+      host: process.env.ZAP_HOST || 'localhost',
+      port: parseInt(process.env.ZAP_PORT || '8080')
+    }
+  },
+
+  // 🌐 Global Configuration
+  globals: {
+    headers: {
+      'X-Test-Suite': '{{sanitizedName}}',
+      'X-Environment': process.env.TEST_ENV || 'development'
+    },
+    timeout: parseInt(process.env.GLOBAL_TIMEOUT || '30000'),
+    retries: parseInt(process.env.GLOBAL_RETRIES || '3'),
+    variables: {}
+  }
+};
+
+export default config;

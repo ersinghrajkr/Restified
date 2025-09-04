@@ -1,0 +1,25 @@
+/**
+ * Global Test Setup - Simple
+ * 
+ * Minimal setup for {{projectName}} tests
+ */
+
+import { restified } from 'restifiedts';
+import * as dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
+
+before(async function() {
+  this.timeout(30000);
+  console.log('🚀 Setting up {{projectName}} tests...');
+  
+  // RestifiedTS automatically loads restified.config.ts
+  console.log('✅ Tests ready');
+});
+
+after(async function() {
+  console.log('🧹 Cleaning up...');
+  await restified.cleanup();
+  console.log('✅ Done');
+});

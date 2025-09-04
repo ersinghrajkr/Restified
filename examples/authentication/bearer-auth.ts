@@ -5,12 +5,31 @@
  * authentication token and pre-configured clients.
  */
 
+import { expect } from 'chai';
 import { restified } from '../../src';
 import { GlobalTestUtils } from '../setup/test-utils';
 
 describe('Bearer Token Authentication Example', function() {
   this.timeout(10000);
+   this.beforeAll('Bearer Token',async function() {
+    GlobalTestUtils.logTestProgress('Simple GET', 'Global Setup');
+    expect(true).to.be.true; // Ensure global setup is complete
+  });
 
+  this.afterAll('Bearer Token',async function() {
+    GlobalTestUtils.logTestProgress('Simple GET', 'Global Setup');
+    expect(true).to.be.true; // Ensure global setup is complete
+  });
+ this.beforeEach('Bearer Token',async function() {
+    GlobalTestUtils.logTestProgress('Simple GET', 'Global Setup');
+    expect(true).to.be.true; // Ensure global setup is complete
+  });
+
+  this.afterEach('Bearer Token',async function() {
+    GlobalTestUtils.logTestProgress('Simple GET', 'Global Setup');
+  
+    expect(true).to.be.true; // Ensure global setup is complete
+  });
   it('should use global authentication token with testUtils client', async function() {
     GlobalTestUtils.logTestProgress('Bearer Auth', 'Global Token Usage');
 

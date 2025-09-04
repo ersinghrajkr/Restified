@@ -1,0 +1,72 @@
+/**
+ * Mocha Reporter Wrapper for RestifiedHtmlReporter
+ * 
+ * This wrapper properly exports the RestifiedHtmlReporter for Mocha compatibility
+ * with enhanced error handling and fallback mechanisms
+ */
+
+const path = require('path');
+const fs = require('fs');
+
+let RestifiedReporter = null;
+
+// Debug information
+const debugInfo = {
+  nodeModulesExists: fs.existsSync('./node_modules'),
+  restifiedtsExists: fs.existsSync('./node_modules/restifiedts'),
+  packageJsonExists: fs.existsSync('./package.json'),
+  cwd: process.cwd()
+};
+
+console.log('🔍 Debug info:', debugInfo);
+
+// Try multiple ways to load RestifiedHtmlReporter
+try {
+  // Method 1: Try loading from restifiedts package
+  const { RestifiedHtmlReporter } = require('restifiedts');
+  if (typeof RestifiedHtmlReporter === 'function') {
+    RestifiedReporter = RestifiedHtmlReporter;
+    console.log('✅ Using RestifiedHtmlReporter for test reports');
+  } else {
+    throw new Error('RestifiedHtmlReporter is not a function');
+  }
+} catch (error1) {
+  try {
+    // Method 2: Try loading from local node_modules
+    const restifiedPath = path.resolve('./node_modules/restifiedts');
+    const { RestifiedHtmlReporter } = require(restifiedPath);
+    if (typeof RestifiedHtmlReporter === 'function') {
+      RestifiedReporter = RestifiedHtmlReporter;
+      console.log('✅ Using RestifiedHtmlReporter from local node_modules');
+    } else {
+      throw new Error('RestifiedHtmlReporter is not a function');
+    }
+  } catch (error2) {
+    try {
+      // Method 3: Try loading from dist directly
+      const { RestifiedHtmlReporter } = require('restifiedts/dist/reporting/restified-html-reporter');
+      if (typeof RestifiedHtmlReporter === 'function') {
+        RestifiedReporter = RestifiedHtmlReporter;
+        console.log('✅ Using RestifiedHtmlReporter from dist/reporting');
+      } else {
+        throw new Error('RestifiedHtmlReporter is not a function');
+      }
+    } catch (error3) {
+      console.warn('⚠️  RestifiedHtmlReporter not available, falling back to spec reporter');
+      console.warn('   Primary error:', error1.message);
+      console.warn('   Secondary error:', error2.message);
+      console.warn('   Tertiary error:', error3.message);
+      console.warn('   Run "npm run test:spec" to use console output instead');
+      console.warn('   Make sure "restifiedts" is installed: npm install');
+      RestifiedReporter = require('mocha/lib/reporters/spec');
+    }
+  }
+}
+
+// Validate that we have a reporter
+if (!RestifiedReporter) {
+  console.warn('⚠️  No reporter found, using spec as final fallback');
+  RestifiedReporter = require('mocha/lib/reporters/spec');
+}
+
+module.exports = RestifiedReporter;

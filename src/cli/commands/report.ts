@@ -111,7 +111,7 @@ export const reportCommand = new Command('report')
       console.log(chalk.gray('   1. Make sure you\'re in a Restified project directory'));
       console.log(chalk.gray('   2. Run: npm install'));
       console.log(chalk.gray('   3. Try: npm run examples'));
-      process.exit(1);
+      throw error; // Re-throw instead of process.exit
     }
   });
 

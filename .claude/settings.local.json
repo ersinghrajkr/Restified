@@ -1,7 +1,14 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx mocha:*)"
+      "Bash(npx mocha:*)",
+      "Bash(cp:*)",
+      "Bash(npm install)",
+      "Bash(mkdir:*)",
+      "Bash(npm run build:*)",
+      "Bash(REPORT_EMERGENCY_TIMEOUT=5000 npx mocha hanging-test.ts --require ts-node/register --reporter ./dist/reporting/restified-html-reporter.js --timeout 15000 --no-config)",
+      "Bash(DEBUG_RESTIFIED_REPORTER=true npx mocha global-restified-test.ts --require ts-node/register --reporter ./dist/reporting/restified-html-reporter.js --timeout 8000 --no-config)",
+      "Bash(start \"\" \"debug-report.html\")"
     ],
     "deny": [],
     "ask": []

@@ -8,23 +8,40 @@ import { ConfigCommand } from './commands/config.command';
 import { GenerateCommand } from './commands/generate.command';
 import { reportCommand } from './commands/report';
 import { initConfigCommand } from './commands/init-config';
-import { createTestCommand } from './commands/create-test';
+import { scaffoldCommand } from './commands/scaffold';
+import { createCommand } from './commands/create';
+
+// Read version dynamically from package.json
+const packageJson = require('../../package.json');
 
 const program = new Command();
 
 program
   .name('restifiedts')
   .description('Restified - Production-grade TypeScript API testing framework')
-  .version('1.0.0');
+  .version(packageJson.version);
 
-// Add commands
+// Add commands with error handling
 program.addCommand(new InitCommand().getCommand());
 program.addCommand(new TestCommand().getCommand());
 program.addCommand(new ConfigCommand().getCommand());
 program.addCommand(new GenerateCommand().getCommand());
 program.addCommand(reportCommand);
 program.addCommand(initConfigCommand);
-program.addCommand(createTestCommand);
+program.addCommand(scaffoldCommand);
+program.addCommand(createCommand);
+
+// Handle command errors gracefully
+program.exitOverride((err) => {
+  if (err.code === 'commander.help') {
+    process.exit(0);
+  } else if (err.code === 'commander.version') {
+    process.exit(0);
+  } else {
+    console.error(chalk.red('Command failed:'), err.message);
+    process.exit(1);
+  }
+});
 
 // Global error handler
 process.on('uncaughtException', (error) => {
@@ -37,10 +54,23 @@ process.on('unhandledRejection', (reason, promise) => {
   process.exit(1);
 });
 
-// Parse command line arguments
-program.parse(process.argv);
-
-// Show help if no command provided
-if (!process.argv.slice(2).length) {
-  program.outputHelp();
+// Parse command line arguments with error handling
+async function main() {
+  try {
+    await program.parseAsync(process.argv);
+    
+    // Show help if no command provided
+    if (!process.argv.slice(2).length) {
+      program.outputHelp();
+    }
+  } catch (error: any) {
+    console.error(chalk.red('CLI Error:'), error.message);
+    process.exit(1);
+  }
 }
+
+// Run main function
+main().catch((error) => {
+  console.error(chalk.red('Unexpected error:'), error.message);
+  process.exit(1);
+});

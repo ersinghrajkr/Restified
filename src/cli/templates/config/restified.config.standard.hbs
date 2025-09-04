@@ -1,0 +1,64 @@
+/**
+ * RestifiedTS Configuration - Standard Setup
+ * 
+ * Includes common features most teams need:
+ * - Environment variables
+ * - Headers and authentication
+ * - Basic reporting
+ */
+
+import { RestifiedConfig } from 'restifiedts';
+
+const config: RestifiedConfig = {
+  // 🌍 Environment
+  environment: process.env.NODE_ENV || 'test',
+  
+  // 🚀 API Configuration  
+  clients: {
+    api: {
+      baseURL: process.env.API_URL || '{{baseUrl}}',
+      timeout: parseInt(process.env.API_TIMEOUT || '10000'),
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': '{{sanitizedName}}-tests/1.0.0'
+      }
+    }
+  },
+
+  // 🔐 Authentication (uncomment and configure if needed)
+  // authentication: {
+  //   endpoint: '/auth/login',           // Your login endpoint
+  //   method: 'POST',
+  //   credentials: {
+  //     // Choose appropriate login method for your API:
+  //     
+  //     // Option 1: Email/password
+  //     email: process.env.API_USERNAME || 'user@example.com',
+  //     password: process.env.API_PASSWORD || 'password123',
+  //     
+  //     // Option 2: Username/password (uncomment if needed)
+  //     // username: process.env.API_USERNAME || 'john_doe',
+  //     // password: process.env.API_PASSWORD || 'password123',
+  //     
+  //     // Option 3: Custom fields
+  //     // employeeId: process.env.EMPLOYEE_ID || 'EMP001',
+  //     // pin: process.env.PIN || '1234'
+  //   },
+  //   extractors: {
+  //     token: '$.access_token',         // Extract JWT token
+  //     userEmail: '$.user.email'        // Extract user info
+  //   },
+  //   autoApplyToClients: 'all',         // Apply token to all clients
+  //   fallback: {
+  //     token: process.env.FALLBACK_TOKEN || 'dev-token-123'
+  //   }
+  // },
+
+  // 📊 Reporting
+  reporting: {
+    formats: ['html'],
+    outputDir: 'reports'
+  }
+};
+
+export default config;
